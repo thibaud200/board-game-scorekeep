@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, GameController, Users, Trash, PencilSimple } from '@phosphor-icons/react'
 import { GameTemplate } from '@/App'
 import { toast } from 'sonner'
@@ -98,6 +99,10 @@ export function GameTemplates() {
     toast.success('Game template deleted')
   }
 
+  const confirmDelete = (templateName: string) => {
+    handleDelete(templateName)
+  }
+
   const addCharacter = () => {
     if (newCharacter.trim() && !formData.characters.includes(newCharacter.trim())) {
       setFormData(prev => ({
@@ -184,15 +189,35 @@ export function GameTemplates() {
                   >
                     <PencilSimple size={14} />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDelete(template.name)}
-                    title="Delete template"
-                    aria-label="Delete template"
-                  >
-                    <Trash size={14} />
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        title="Delete template"
+                        aria-label="Delete template"
+                      >
+                        <Trash size={14} />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Game Template</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete the "{template.name}" template? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => confirmDelete(template.name)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </CardHeader>
