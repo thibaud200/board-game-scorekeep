@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Plus, GameController, Users, Trash, PencilSimple } from '@phosphor-icons/react'
+import { Plus, GameController, Users, Trash2, Edit } from '@phosphor-icons/react'
 import { GameTemplate } from '@/App'
 import { toast } from 'sonner'
 
@@ -24,7 +24,8 @@ export function GameTemplates() {
     extensions: [] as string[],
     isCooperativeByDefault: false
   })
-  const [newCharacter, setNewCharacter] = useState('')
+  const [newCharacterName, setNewCharacterName] = useState('')
+  const [newCharacterType, setNewCharacterType] = useState('')
   const [newExtension, setNewExtension] = useState('')
 
   const resetForm = () => {
@@ -36,7 +37,8 @@ export function GameTemplates() {
       extensions: [],
       isCooperativeByDefault: false
     })
-    setNewCharacter('')
+    setNewCharacterName('')
+    setNewCharacterType('')
     setNewExtension('')
   }
 
@@ -104,12 +106,25 @@ export function GameTemplates() {
   }
 
   const addCharacter = () => {
-    if (newCharacter.trim() && !formData.characters.includes(newCharacter.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        characters: [...prev.characters, newCharacter.trim()]
-      }))
-      setNewCharacter('')
+    if (newCharacterName.trim() && newCharacterType.trim()) {
+      const characterEntry = `${newCharacterName.trim()}(${newCharacterType.trim()})`
+      if (!formData.characters.includes(characterEntry)) {
+        setFormData(prev => ({
+          ...prev,
+          characters: [...prev.characters, characterEntry]
+        }))
+        setNewCharacterName('')
+        setNewCharacterType('')
+      }
+    } else if (newCharacterName.trim() && !newCharacterType.trim()) {
+      // Allow adding just a name without type for backwards compatibility
+      if (!formData.characters.includes(newCharacterName.trim())) {
+        setFormData(prev => ({
+          ...prev,
+          characters: [...prev.characters, newCharacterName.trim()]
+        }))
+        setNewCharacterName('')
+      }
     }
   }
 
@@ -187,7 +202,7 @@ export function GameTemplates() {
                     title="Edit template"
                     aria-label="Edit template"
                   >
-                    <PencilSimple size={14} />
+                    <Edit size={14} />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -197,7 +212,7 @@ export function GameTemplates() {
                         title="Delete template"
                         aria-label="Delete template"
                       >
-                        <Trash size={14} />
+                        <Trash2 size={14} />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -322,14 +337,27 @@ export function GameTemplates() {
               {formData.hasCharacters && (
                 <div className="space-y-2 pl-6">
                   <Label>Characters</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newCharacter}
-                      onChange={(e) => setNewCharacter(e.target.value)}
-                      placeholder="Add character name"
-                      onKeyPress={(e) => e.key === 'Enter' && addCharacter()}
-                    />
-                    <Button type="button" onClick={addCharacter}>Add</Button>
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        value={newCharacterName}
+                        onChange={(e) => setNewCharacterName(e.target.value)}
+                        placeholder="Character name (e.g., Mike)"
+                        className="flex-1"
+                        onKeyPress={(e) => e.key === 'Enter' && addCharacter()}
+                      />
+                      <Input
+                        value={newCharacterType}
+                        onChange={(e) => setNewCharacterType(e.target.value)}
+                        placeholder="Type (e.g., Psychic)"
+                        className="flex-1"
+                        onKeyPress={(e) => e.key === 'Enter' && addCharacter()}
+                      />
+                      <Button type="button" onClick={addCharacter}>Add</Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Add character name and type (Explorer, Scholar, Occultist, Psychic, Dilettante, Athlete)
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {formData.characters.map(character => (
