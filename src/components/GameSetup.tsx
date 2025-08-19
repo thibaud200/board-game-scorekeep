@@ -350,12 +350,12 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
               onClick={handleStartGame}
               disabled={!gameType.trim() || selectedPlayers.length < 2}
               size="lg"
-              className="flex-1 h-12"
+              className="w-full sm:flex-1 h-12"
             >
               <Play size={18} className="mr-2" />
               Start Game
             </Button>
-            <Button variant="outline" onClick={onCancel} size="lg" className="h-12">
+            <Button variant="outline" onClick={onCancel} size="lg" className="w-full sm:w-auto h-12">
               Cancel
             </Button>
           </div>
