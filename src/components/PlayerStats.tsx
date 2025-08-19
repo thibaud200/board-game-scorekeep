@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,27 +11,29 @@ export function PlayerStats() {
   const [players] = useKV<Player[]>('players', [])
   const [gameHistory] = useKV<GameSession[]>('gameHistory', [])
 
-  const completedGames = gameHistory.filter(game => game.completed)
+  const completedGames = useMemo(() => gameHistory.filter(game => game.completed), [gameHistory])
 
-  const getPlayerStats = (player: Player) => {
-    const playerGames = completedGames.filter(game => game.players.includes(player.id))
-    const wins = completedGames.filter(game => game.winner === player.id).length
-    const winRate = playerGames.length > 0 ? (wins / playerGames.length) * 100 : 0
-    
-    const totalScore = playerGames.reduce((sum, game) => sum + (game.scores[player.id] || 0), 0)
-    const averageScore = playerGames.length > 0 ? totalScore / playerGames.length : 0
+  const getPlayerStats = useMemo(() => {
+    return (player: Player) => {
+      const playerGames = completedGames.filter(game => game.players.includes(player.id))
+      const wins = completedGames.filter(game => game.winner === player.id).length
+      const winRate = playerGames.length > 0 ? (wins / playerGames.length) * 100 : 0
+      
+      const totalScore = playerGames.reduce((sum, game) => sum + (game.scores[player.id] || 0), 0)
+      const averageScore = playerGames.length > 0 ? totalScore / playerGames.length : 0
 
-    const gameTypes = new Set(playerGames.map(game => game.gameType))
-    
-    return {
-      gamesPlayed: playerGames.length,
-      wins,
-      winRate,
-      averageScore,
-      gameTypes: gameTypes.size,
-      lastPlayed: playerGames.length > 0 ? new Date(Math.max(...playerGames.map(g => new Date(g.date).getTime()))) : null
+      const gameTypes = new Set(playerGames.map(game => game.gameType))
+      
+      return {
+        gamesPlayed: playerGames.length,
+        wins,
+        winRate,
+        averageScore,
+        gameTypes: gameTypes.size,
+        lastPlayed: playerGames.length > 0 ? new Date(Math.max(...playerGames.map(g => new Date(g.date).getTime()))) : null
+      }
     }
-  }
+  }, [completedGames])
 
   const getPlayerInitials = (name: string) => {
     return name
@@ -41,7 +44,7 @@ export function PlayerStats() {
       .slice(0, 2)
   }
 
-  const getTopPerformer = () => {
+  const topPerformer = useMemo(() => {
     if (players.length === 0) return null
     
     return players.reduce((best, player) => {
@@ -52,9 +55,9 @@ export function PlayerStats() {
       if (stats.wins === bestStats.wins && stats.winRate > bestStats.winRate) return player
       return best
     })
-  }
+  }, [players, getPlayerStats])
 
-  const getMostActivePlayer = () => {
+  const mostActive = useMemo(() => {
     if (players.length === 0) return null
     
     return players.reduce((mostActive, player) => {
@@ -62,10 +65,7 @@ export function PlayerStats() {
       const mostActiveStats = getPlayerStats(mostActive)
       return stats.gamesPlayed > mostActiveStats.gamesPlayed ? player : mostActive
     })
-  }
-
-  const topPerformer = getTopPerformer()
-  const mostActive = getMostActivePlayer()
+  }, [players, getPlayerStats])
 
   if (players.length === 0) {
     return (
