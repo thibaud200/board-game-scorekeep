@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Plus, GameController, Users, Trash2, Edit3 } from '@phosphor-icons/react'
+import { Plus, GameController, Users, Trash, PencilSimple } from '@phosphor-icons/react'
 import { GameTemplate } from '@/App'
 import { toast } from 'sonner'
 
@@ -179,15 +179,19 @@ export function GameTemplates() {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleEdit(template)}
+                    title="Edit template"
+                    aria-label="Edit template"
                   >
-                    <Edit3 size={14} />
+                    <PencilSimple size={14} />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDelete(template.name)}
+                    title="Delete template"
+                    aria-label="Delete template"
                   >
-                    <Trash2 size={14} />
+                    <Trash size={14} />
                   </Button>
                 </div>
               </div>
