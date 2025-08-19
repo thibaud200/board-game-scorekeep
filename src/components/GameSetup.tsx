@@ -111,40 +111,43 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto space-y-6">
+      <div className="container mx-auto px-4 py-4 md:py-8">
+        <div className="max-w-2xl mx-auto space-y-4 md:space-y-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={onCancel}>
-              <ArrowLeft size={20} />
+            <Button variant="ghost" onClick={onCancel} size="sm">
+              <ArrowLeft size={16} className="md:mr-2" />
+              <span className="hidden md:inline">Back</span>
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">New Game Setup</h1>
-              <p className="text-muted-foreground">Configure your game settings</p>
+              <h1 className="text-xl md:text-2xl font-bold">New Game Setup</h1>
+              <p className="text-muted-foreground text-sm">Configure your game settings</p>
             </div>
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GameController size={20} />
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <GameController size={18} />
                 Game Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="gameType">Game Name</Label>
+              <div className="space-y-3">
+                <Label htmlFor="gameType" className="text-sm font-medium">Game Name</Label>
                 <div className="space-y-2">
                   <Select value={gameType} onValueChange={handleGameTypeChange}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select a game or type custom name" />
                     </SelectTrigger>
                     <SelectContent>
                       {gameTemplates.map(template => (
                         <SelectItem key={template.name} value={template.name}>
-                          {template.name}
-                          {template.isCooperativeByDefault && (
-                            <Badge variant="secondary" className="ml-2">Coop</Badge>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {template.name}
+                            {template.isCooperativeByDefault && (
+                              <Badge variant="secondary" className="text-xs">Coop</Badge>
+                            )}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -154,11 +157,12 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                     value={gameType}
                     onChange={(e) => setGameType(e.target.value)}
                     placeholder="Or type a custom game name"
+                    className="h-11"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
                 <Checkbox
                   id="cooperative"
                   checked={isCooperative}
@@ -171,36 +175,36 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                     }
                   }}
                 />
-                <Label htmlFor="cooperative" className="flex items-center gap-2">
+                <Label htmlFor="cooperative" className="flex items-center gap-2 cursor-pointer">
                   <Users size={16} />
                   Cooperative Game
                 </Label>
               </div>
 
               {!isCooperative && (
-                <div>
-                  <Label>Win Condition</Label>
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Win Condition</Label>
                   <RadioGroup value={winCondition} onValueChange={(value: 'highest' | 'lowest') => setWinCondition(value)}>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3 p-3 rounded-lg border">
                       <RadioGroupItem value="highest" id="highest" />
-                      <Label htmlFor="highest">Highest score wins</Label>
+                      <Label htmlFor="highest" className="cursor-pointer">Highest score wins</Label>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3 p-3 rounded-lg border">
                       <RadioGroupItem value="lowest" id="lowest" />
-                      <Label htmlFor="lowest">Lowest score wins</Label>
+                      <Label htmlFor="lowest" className="cursor-pointer">Lowest score wins</Label>
                     </div>
                   </RadioGroup>
                 </div>
               )}
 
               {selectedTemplate?.hasExtensions && selectedTemplate.extensions && (
-                <div>
-                  <Label>Extensions ({selectedExtensions.length} selected)</Label>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Extensions ({selectedExtensions.length} selected)</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {selectedTemplate.extensions.map(extension => (
                       <div
                         key={extension}
-                        className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors min-h-[44px] ${
                           selectedExtensions.includes(extension)
                             ? 'border-primary bg-primary/5'
                             : 'border-border hover:border-primary/50'
@@ -211,7 +215,7 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                           checked={selectedExtensions.includes(extension)}
                           onChange={() => handleExtensionToggle(extension)}
                         />
-                        <span className="text-sm">{extension}</span>
+                        <span className="text-sm flex-1">{extension}</span>
                       </div>
                     ))}
                   </div>
@@ -221,20 +225,20 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users size={20} />
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Users size={18} />
                 Select Players ({selectedPlayers.length} selected)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="space-y-3">
                 {players.map((player) => {
                   const isSelected = selectedPlayers.includes(player.id)
                   return (
                     <div key={player.id} className="space-y-2">
                       <div
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors min-h-[44px] ${
                           isSelected
                             ? 'border-primary bg-primary/5'
                             : 'border-border hover:border-primary/50'
@@ -250,16 +254,16 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                             {getPlayerInitials(player.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="font-medium">{player.name}</span>
+                        <span className="font-medium flex-1">{player.name}</span>
                       </div>
                       
                       {isSelected && selectedTemplate?.hasCharacters && selectedTemplate.characters && (
-                        <div className="ml-6">
+                        <div className="ml-6 mr-3">
                           <Select
                             value={playerCharacters[player.id] || ''}
                             onValueChange={(value) => handleCharacterSelect(player.id, value)}
                           >
-                            <SelectTrigger className="h-8">
+                            <SelectTrigger className="h-10">
                               <SelectValue placeholder="Select character" />
                             </SelectTrigger>
                             <SelectContent>
@@ -277,24 +281,26 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                 })}
               </div>
               {selectedPlayers.length < 2 && (
-                <p className="text-sm text-muted-foreground mt-3">
-                  Select at least 2 players to start the game
-                </p>
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Select at least 2 players to start the game
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Button
               onClick={handleStartGame}
               disabled={!gameType.trim() || selectedPlayers.length < 2}
               size="lg"
-              className="flex-1"
+              className="flex-1 h-12"
             >
-              <Play size={20} className="mr-2" />
+              <Play size={18} className="mr-2" />
               Start Game
             </Button>
-            <Button variant="outline" onClick={onCancel} size="lg">
+            <Button variant="outline" onClick={onCancel} size="lg" className="h-12">
               Cancel
             </Button>
           </div>

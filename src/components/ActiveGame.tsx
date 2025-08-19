@@ -139,18 +139,18 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
+      <div className="container mx-auto px-4 py-4 md:py-8">
+        <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
           <div className="text-center space-y-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2">{game.gameType}</h1>
-              <div className="flex items-center justify-center gap-4 text-muted-foreground">
-                <span>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">{game.gameType}</h1>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-muted-foreground">
+                <span className="text-sm">
                   {game.isCooperative ? 'Cooperative Game' : 
                    game.winCondition === 'highest' ? 'Highest score wins' : 'Lowest score wins'}
                 </span>
                 {game.extensions && game.extensions.length > 0 && (
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1 justify-center">
                     {game.extensions.map(ext => (
                       <Badge key={ext} variant="outline" className="text-xs">
                         {ext}
@@ -165,8 +165,8 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
               <CardContent className="py-4">
                 <div className="flex items-center justify-center gap-4">
                   <div className="flex items-center gap-2">
-                    <Clock size={20} className="text-muted-foreground" />
-                    <span className="text-2xl font-mono font-bold">
+                    <Clock size={18} className="text-muted-foreground" />
+                    <span className="text-xl md:text-2xl font-mono font-bold">
                       {formatTime(elapsedTime)}
                     </span>
                   </div>
@@ -174,15 +174,16 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsTimerRunning(!isTimerRunning)}
+                    className="h-8 w-8 p-0"
                   >
-                    {isTimerRunning ? <Pause size={16} /> : <Play size={16} />}
+                    {isTimerRunning ? <Pause size={14} /> : <Play size={14} />}
                   </Button>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {sortedPlayers.map((player, index) => {
               const score = game.scores[player.id] || 0
               const isWinning = index === 0
@@ -197,16 +198,16 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                             {getPlayerInitials(player.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <div>
-                          <h3 className="font-medium">{player.name}</h3>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-medium truncate">{player.name}</h3>
                           {game.characters && game.characters[player.id] && (
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground truncate">
                               {game.characters[player.id]}
                             </div>
                           )}
                           {isWinning && !game.isCooperative && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Trophy size={12} className="mr-1" />
+                            <Badge variant="secondary" className="text-xs mt-1">
+                              <Trophy size={10} className="mr-1" />
                               Leading
                             </Badge>
                           )}
@@ -219,7 +220,7 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-primary">{score}</div>
+                      <div className="text-2xl md:text-3xl font-bold text-primary">{score}</div>
                       <div className="text-sm text-muted-foreground">points</div>
                     </div>
                     
@@ -228,7 +229,7 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                         variant="outline"
                         size="sm"
                         onClick={() => adjustScore(player.id, -1)}
-                        className="flex-1"
+                        className="flex-1 h-10"
                       >
                         <Minus size={16} />
                       </Button>
@@ -237,7 +238,7 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                         type="number"
                         value={score}
                         onChange={(e) => updateScore(player.id, parseInt(e.target.value) || 0)}
-                        className="text-center font-medium"
+                        className="text-center font-medium h-10 text-lg"
                         min="0"
                       />
                       
@@ -245,18 +246,18 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                         variant="outline"
                         size="sm"
                         onClick={() => adjustScore(player.id, 1)}
-                        className="flex-1"
+                        className="flex-1 h-10"
                       >
                         <Plus size={16} />
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-1">
+                    <div className="grid grid-cols-3 gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => adjustScore(player.id, 1)}
-                        className="text-xs"
+                        className="text-xs h-8"
                       >
                         +1
                       </Button>
@@ -264,7 +265,7 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                         variant="ghost"
                         size="sm"
                         onClick={() => adjustScore(player.id, 5)}
-                        className="text-xs"
+                        className="text-xs h-8"
                       >
                         +5
                       </Button>
@@ -272,7 +273,7 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                         variant="ghost"
                         size="sm"
                         onClick={() => adjustScore(player.id, 10)}
-                        className="text-xs"
+                        className="text-xs h-8"
                       >
                         +10
                       </Button>
@@ -285,9 +286,9 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
 
           {!game.isCooperative && currentWinner && (
             <Card className="bg-accent/10 border-accent/20">
-              <CardContent className="py-6">
+              <CardContent className="py-4 md:py-6">
                 <div className="text-center">
-                  <Trophy size={32} className="mx-auto mb-2 text-accent" />
+                  <Trophy size={28} className="mx-auto mb-2 text-accent" />
                   <h3 className="text-lg font-semibold mb-1">
                     {currentWinner.name} is currently winning!
                   </h3>
@@ -301,9 +302,9 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
 
           {game.isCooperative && (
             <Card className="bg-primary/10 border-primary/20">
-              <CardContent className="py-6">
+              <CardContent className="py-4 md:py-6">
                 <div className="text-center">
-                  <Trophy size={32} className="mx-auto mb-2 text-primary" />
+                  <Trophy size={28} className="mx-auto mb-2 text-primary" />
                   <h3 className="text-lg font-semibold mb-1">
                     Working together as a team!
                   </h3>
@@ -315,15 +316,15 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
             </Card>
           )}
 
-          <div className="flex gap-3 justify-center">
+          <div className="flex gap-3 justify-center pb-4">
             <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
               <DialogTrigger asChild>
-                <Button size="lg" className="bg-success hover:bg-success/90 text-success-foreground">
-                  <CheckCircle size={20} className="mr-2" />
+                <Button size="lg" className="bg-success hover:bg-success/90 text-success-foreground h-12 px-6">
+                  <CheckCircle size={18} className="mr-2" />
                   Complete Game
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="mx-4">
                 <DialogHeader>
                   <DialogTitle>Complete Game</DialogTitle>
                 </DialogHeader>
@@ -358,11 +359,11 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                       </div>
                     </div>
                   )}
-                  <div className="flex gap-2">
-                    <Button onClick={handleCompleteGame} className="flex-1">
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button onClick={handleCompleteGame} className="flex-1 h-11">
                       Yes, Complete Game
                     </Button>
-                    <Button variant="outline" onClick={() => setShowCompleteDialog(false)}>
+                    <Button variant="outline" onClick={() => setShowCompleteDialog(false)} className="h-11">
                       Cancel
                     </Button>
                   </div>
