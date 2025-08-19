@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Trophy, Calendar, Users, Trash2 } from '@phosphor-icons/react'
+import { Trophy, Calendar, Users, Trash2, Clock, GameController } from '@phosphor-icons/react'
 import { Player, GameSession } from '@/App'
 
 export function GameHistory() {
@@ -37,6 +37,16 @@ export function GameHistory() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const formatDuration = (minutes?: number) => {
+    if (!minutes) return 'Unknown'
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours > 0) {
+      return `${hours}h ${mins}m`
+    }
+    return `${mins}m`
   }
 
   if (completedGames.length === 0) {
@@ -77,10 +87,21 @@ export function GameHistory() {
                   <div>
                     <CardTitle className="flex items-center gap-2">
                       {game.gameType}
-                      {winner && (
+                      {game.isCooperative ? (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <Users size={12} />
+                          Cooperative
+                        </Badge>
+                      ) : winner ? (
                         <Badge variant="secondary" className="flex items-center gap-1">
                           <Trophy size={12} />
                           {winner.name}
+                        </Badge>
+                      ) : null}
+                      {game.extensions && game.extensions.length > 0 && (
+                        <Badge variant="outline" className="flex items-center gap-1">
+                          <GameController size={12} />
+                          +{game.extensions.length}
                         </Badge>
                       )}
                     </CardTitle>
@@ -93,10 +114,27 @@ export function GameHistory() {
                         <Users size={14} />
                         {game.players.length} players
                       </div>
-                      <div>
-                        {game.winCondition === 'highest' ? 'Highest' : 'Lowest'} score wins
-                      </div>
+                      {game.duration && (
+                        <div className="flex items-center gap-1">
+                          <Clock size={14} />
+                          {formatDuration(game.duration)}
+                        </div>
+                      )}
+                      {!game.isCooperative && (
+                        <div>
+                          {game.winCondition === 'highest' ? 'Highest' : 'Lowest'} score wins
+                        </div>
+                      )}
                     </div>
+                    {game.extensions && game.extensions.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {game.extensions.map(ext => (
+                          <Badge key={ext} variant="outline" className="text-xs">
+                            {ext}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <Button
                     variant="ghost"
@@ -109,17 +147,20 @@ export function GameHistory() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <h4 className="font-medium text-sm">Final Scores</h4>
+                  <h4 className="font-medium text-sm">
+                    {game.isCooperative ? 'Team Scores' : 'Final Scores'}
+                  </h4>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {gamePlayers
                       .sort((a, b) => {
+                        if (game.isCooperative) return 0 // Keep original order for coop games
                         const scoreA = game.scores[a.id] || 0
                         const scoreB = game.scores[b.id] || 0
                         return game.winCondition === 'highest' ? scoreB - scoreA : scoreA - scoreB
                       })
                       .map((player, index) => {
                         const score = game.scores[player.id] || 0
-                        const isWinner = player.id === game.winner
+                        const isWinner = !game.isCooperative && player.id === game.winner
                         
                         return (
                           <div
@@ -128,9 +169,11 @@ export function GameHistory() {
                               isWinner ? 'bg-accent/10 border border-accent/20' : 'bg-muted/50'
                             }`}
                           >
-                            <div className="text-sm font-medium text-muted-foreground w-6">
-                              #{index + 1}
-                            </div>
+                            {!game.isCooperative && (
+                              <div className="text-sm font-medium text-muted-foreground w-6">
+                                #{index + 1}
+                              </div>
+                            )}
                             <Avatar className="h-8 w-8">
                               <AvatarFallback className={`${isWinner ? 'bg-accent text-accent-foreground' : 'bg-secondary text-secondary-foreground'} text-sm`}>
                                 {getPlayerInitials(player.name)}
@@ -138,6 +181,11 @@ export function GameHistory() {
                             </Avatar>
                             <div className="flex-1">
                               <div className="font-medium text-sm">{player.name}</div>
+                              {game.characters && game.characters[player.id] && (
+                                <div className="text-xs text-muted-foreground">
+                                  {game.characters[player.id]}
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="font-bold">{score}</span>

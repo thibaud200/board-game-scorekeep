@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Toaster } from '@/components/ui/sonner'
-import { Plus, Trophy, Users, BarChart3, Clock } from '@phosphor-icons/react'
+import { Plus, Trophy, Users, BarChart3, Clock, GameController } from '@phosphor-icons/react'
 import { PlayerManager } from '@/components/PlayerManager'
 import { GameSetup } from '@/components/GameSetup'
 import { ActiveGame } from '@/components/ActiveGame'
 import { GameHistory } from '@/components/GameHistory'
-import { PlayerStats } from '@/components/PlayerStats'
+import { GameTemplates } from '@/components/GameTemplates'
 
 export interface Player {
   id: string
@@ -21,17 +21,50 @@ export interface Player {
 export interface GameSession {
   id: string
   gameType: string
+  isCooperative: boolean
   players: string[]
   scores: Record<string, number>
+  characters?: Record<string, string> // playerId -> character name
+  extensions?: string[]
   winner?: string
-  winCondition: 'highest' | 'lowest'
+  winCondition: 'highest' | 'lowest' | 'cooperative'
   date: string
+  startTime?: string
+  endTime?: string
+  duration?: number // in minutes
   completed: boolean
+}
+
+export interface GameTemplate {
+  name: string
+  hasCharacters: boolean
+  characters?: string[]
+  hasExtensions: boolean
+  extensions?: string[]
+  isCooperativeByDefault: boolean
 }
 
 function App() {
   const [players] = useKV<Player[]>('players', [])
   const [gameHistory] = useKV<GameSession[]>('gameHistory', [])
+  const [gameTemplates] = useKV<GameTemplate[]>('gameTemplates', [
+    {
+      name: 'Cthulhu',
+      hasCharacters: true,
+      characters: ['Investigator', 'Detective', 'Journalist', 'Professor', 'Doctor', 'Mystic'],
+      hasExtensions: true,
+      extensions: ['Dunwich Horror', 'King in Yellow', 'The Lurker at the Threshold'],
+      isCooperativeByDefault: true
+    },
+    {
+      name: 'Demeure de l\'Épouvante',
+      hasCharacters: true,
+      characters: ['Explorer', 'Scholar', 'Occultist', 'Psychic', 'Dilettante', 'Athlete'],
+      hasExtensions: true,
+      extensions: ['Widow\'s Walk', 'Cosmic Horror'],
+      isCooperativeByDefault: true
+    }
+  ])
   const [currentGame, setCurrentGame] = useKV<GameSession | null>('currentGame', null)
   const [showGameSetup, setShowGameSetup] = useState(false)
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -51,6 +84,7 @@ function App() {
     return (
       <GameSetup 
         players={players}
+        gameTemplates={gameTemplates}
         onCancel={() => setShowGameSetup(false)}
         onStartGame={(game) => {
           setCurrentGame(game)
@@ -83,7 +117,7 @@ function App() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <Trophy size={16} />
               Dashboard
@@ -91,6 +125,10 @@ function App() {
             <TabsTrigger value="players" className="flex items-center gap-2">
               <Users size={16} />
               Players
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="flex items-center gap-2">
+              <GameController size={16} />
+              Templates
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center gap-2">
               <Clock size={16} />
@@ -163,16 +201,32 @@ function App() {
                       return (
                         <div key={game.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
-                            <div className="font-medium">{game.gameType}</div>
+                            <div className="font-medium flex items-center gap-2">
+                              {game.gameType}
+                              {game.isCooperative && (
+                                <Badge variant="outline" className="text-xs">
+                                  <Users size={12} className="mr-1" />
+                                  Coop
+                                </Badge>
+                              )}
+                            </div>
                             <div className="text-sm text-muted-foreground">
                               {new Date(game.date).toLocaleDateString()}
+                              {game.duration && ` • ${Math.floor(game.duration / 60)}h ${game.duration % 60}m`}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <Trophy size={14} />
-                              {winner?.name || 'Unknown'}
-                            </Badge>
+                            {game.isCooperative ? (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <Trophy size={14} />
+                                Team Victory
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <Trophy size={14} />
+                                {winner?.name || 'Unknown'}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       )
@@ -185,6 +239,10 @@ function App() {
 
           <TabsContent value="players">
             <PlayerManager />
+          </TabsContent>
+
+          <TabsContent value="templates">
+            <GameTemplates />
           </TabsContent>
 
           <TabsContent value="history">
