@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Plus, Trash2, Edit, Users } from '@phosphor-icons/react'
+import { Plus, Trash, Edit, Users } from '@phosphor-icons/react'
 import { Player } from '@/App'
 
 export function PlayerManager() {
