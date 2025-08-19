@@ -38,9 +38,9 @@ export interface GameTemplate {
 }
 
 function App() {
-  const [players] = useKV<Player[]>('players', [])
-  const [gameHistory] = useKV<GameSession[]>('gameHistory', [])
-  const [gameTemplates] = useKV<GameTemplate[]>('gameTemplates', [
+  const [playersData] = useKV<Player[]>('players', [])
+  const [gameHistoryData] = useKV<GameSession[]>('gameHistory', [])
+  const [gameTemplatesData] = useKV<GameTemplate[]>('gameTemplates', [
     {
       name: 'Cthulhu',
       hasCharacters: true,
@@ -59,6 +59,28 @@ function App() {
     }
   ])
   const [currentGame, setCurrentGame] = useKV<GameSession | null>('currentGame', null)
+  
+  // Ensure data is always an array even if undefined
+  const players = playersData || []
+  const gameHistory = gameHistoryData || []
+  const gameTemplates = gameTemplatesData || [
+    {
+      name: 'Cthulhu',
+      hasCharacters: true,
+      characters: ['Investigator', 'Detective', 'Journalist', 'Professor', 'Doctor', 'Mystic'],
+      hasExtensions: true,
+      extensions: ['Dunwich Horror', 'King in Yellow', 'The Lurker at the Threshold'],
+      isCooperativeByDefault: true
+    },
+    {
+      name: 'Demeure de l\'Épouvante',
+      hasCharacters: true,
+      characters: ['Explorer', 'Scholar', 'Occultist', 'Psychic', 'Dilettante', 'Athlete'],
+      hasExtensions: true,
+      extensions: ['Widow\'s Walk', 'Cosmic Horror'],
+      isCooperativeByDefault: true
+    }
+  ]
   const [showGameSetup, setShowGameSetup] = useState(false)
 
   if (showGameSetup) {

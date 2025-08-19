@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { ArrowLeft, Plus, Trophy, Users, Trash2, Edit2, BarChart3 } from '@phosphor-icons/react'
+import { ArrowLeft, Plus, Trophy, Users, Trash, PencilSimple, ChartBar } from '@phosphor-icons/react'
 import { Player, GameSession } from '@/App'
 import { toast } from 'sonner'
 
@@ -35,7 +35,7 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
       name: newPlayerName.trim()
     }
 
-    setPlayers(current => [...current, newPlayer])
+    setPlayers(current => [...(current || []), newPlayer])
     setNewPlayerName('')
     toast.success(`${newPlayer.name} added successfully`)
   }
@@ -49,7 +49,7 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
     }
 
     setPlayers(current => 
-      current.map(p => p.id === player.id ? { ...p, name: editName.trim() } : p)
+      (current || []).map(p => p.id === player.id ? { ...p, name: editName.trim() } : p)
     )
     setEditingPlayer(null)
     setEditName('')
@@ -63,7 +63,7 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
       return
     }
 
-    setPlayers(current => current.filter(p => p.id !== player.id))
+    setPlayers(current => (current || []).filter(p => p.id !== player.id))
     toast.success(`${player.name} removed successfully`)
   }
 
@@ -148,7 +148,7 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
                         }}
                         className="h-8 w-8 p-0"
                       >
-                        <Edit2 size={14} />
+                        <PencilSimple size={14} />
                       </Button>
                       <Button
                         variant="ghost"
@@ -156,7 +156,7 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
                         onClick={() => deletePlayer(player)}
                         className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                       >
-                        <Trash2 size={14} />
+                        <Trash size={14} />
                       </Button>
                     </div>
                   </div>
@@ -196,7 +196,7 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
                             className="w-full"
                             onClick={() => setSelectedPlayer(player)}
                           >
-                            <BarChart3 size={14} className="mr-2" />
+                            <ChartBar size={14} className="mr-2" />
                             View Details
                           </Button>
                         </DialogTrigger>

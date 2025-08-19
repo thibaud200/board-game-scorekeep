@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { ArrowLeft, Plus, GameController, Trash2, Edit2, BarChart3, Users } from '@phosphor-icons/react'
+import { ArrowLeft, Plus, GameController, Trash, PencilSimple, ChartBar, Users } from '@phosphor-icons/react'
 import { GameTemplate, GameSession } from '@/App'
 import { toast } from 'sonner'
 
@@ -86,12 +86,12 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
 
     if (editingTemplate) {
       setGameTemplates(current => 
-        current.map(t => t.name === editingTemplate.name ? template : t)
+        (current || []).map(t => t.name === editingTemplate.name ? template : t)
       )
       toast.success('Game template updated successfully')
       setEditingTemplate(null)
     } else {
-      setGameTemplates(current => [...current, template])
+      setGameTemplates(current => [...(current || []), template])
       toast.success('Game template added successfully')
       setShowAddDialog(false)
     }
@@ -106,7 +106,7 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
       return
     }
 
-    setGameTemplates(current => current.filter(t => t.name !== template.name))
+    setGameTemplates(current => (current || []).filter(t => t.name !== template.name))
     toast.success(`${template.name} template removed successfully`)
   }
 
@@ -255,7 +255,7 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
                         onClick={() => openEditDialog(template)}
                         className="h-8 w-8 p-0"
                       >
-                        <Edit2 size={14} />
+                        <PencilSimple size={14} />
                       </Button>
                       <Button
                         variant="ghost"
@@ -263,7 +263,7 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
                         onClick={() => deleteTemplate(template)}
                         className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                       >
-                        <Trash2 size={14} />
+                        <Trash size={14} />
                       </Button>
                     </div>
                   </div>
@@ -318,7 +318,7 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
                             className="w-full"
                             onClick={() => setSelectedTemplate(template)}
                           >
-                            <BarChart3 size={14} className="mr-2" />
+                            <ChartBar size={14} className="mr-2" />
                             View History
                           </Button>
                         </DialogTrigger>

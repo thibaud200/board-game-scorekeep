@@ -3,12 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Trophy, Calendar, Users, Trash2, Clock, GameController } from '@phosphor-icons/react'
+import { Trophy, Calendar, Users, Trash, Clock, GameController } from '@phosphor-icons/react'
 import { Player, GameSession } from '@/App'
 
 export function GameHistory() {
-  const [players] = useKV<Player[]>('players', [])
-  const [gameHistory, setGameHistory] = useKV<GameSession[]>('gameHistory', [])
+  const [playersData] = useKV<Player[]>('players', [])
+  const [gameHistoryData, setGameHistory] = useKV<GameSession[]>('gameHistory', [])
+
+  // Ensure data is always an array
+  const players = playersData || []
+  const gameHistory = gameHistoryData || []
 
   const completedGames = gameHistory.filter(game => game.completed).reverse()
 
@@ -26,7 +30,7 @@ export function GameHistory() {
   }
 
   const handleDeleteGame = (gameId: string) => {
-    setGameHistory((current) => current.filter(game => game.id !== gameId))
+    setGameHistory((current) => (current || []).filter(game => game.id !== gameId))
   }
 
   const formatDate = (dateString: string) => {
@@ -141,7 +145,7 @@ export function GameHistory() {
                     size="sm"
                     onClick={() => handleDeleteGame(game.id)}
                   >
-                    <Trash2 size={16} />
+                    <Trash size={16} />
                   </Button>
                 </div>
               </CardHeader>
@@ -190,7 +194,7 @@ export function GameHistory() {
                                       return char
                                     } else if (char) {
                                       // New format with name and type
-                                      const parts = []
+                                      const parts: string[] = []
                                       if (char.name) parts.push(char.name)
                                       if (char.type) parts.push(`(${char.type})`)
                                       return parts.join(' ')

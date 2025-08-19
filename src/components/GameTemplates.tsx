@@ -8,14 +8,17 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Plus, GameController, Users, Trash2, Edit } from '@phosphor-icons/react'
+import { Plus, GameController, Users, Trash, PencilSimple } from '@phosphor-icons/react'
 import { GameTemplate } from '@/App'
 import { toast } from 'sonner'
 
 export function GameTemplates() {
-  const [gameTemplates, setGameTemplates] = useKV<GameTemplate[]>('gameTemplates', [])
+  const [gameTemplatesData, setGameTemplates] = useKV<GameTemplate[]>('gameTemplates', [])
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<GameTemplate | null>(null)
+  
+  // Ensure gameTemplates is always an array
+  const gameTemplates = gameTemplatesData || []
   const [formData, setFormData] = useState({
     name: '',
     hasCharacters: false,
@@ -78,7 +81,7 @@ export function GameTemplates() {
 
     if (editingTemplate) {
       setGameTemplates(current => 
-        current.map(t => t.name === editingTemplate.name ? template : t)
+        (current || []).map(t => t.name === editingTemplate.name ? template : t)
       )
       toast.success('Game template updated!')
     } else {
@@ -88,7 +91,7 @@ export function GameTemplates() {
         return
       }
       
-      setGameTemplates(current => [...current, template])
+      setGameTemplates(current => [...(current || []), template])
       toast.success('Game template added!')
     }
 
@@ -97,7 +100,7 @@ export function GameTemplates() {
   }
 
   const handleDelete = (templateName: string) => {
-    setGameTemplates(current => current.filter(t => t.name !== templateName))
+    setGameTemplates(current => (current || []).filter(t => t.name !== templateName))
     toast.success('Game template deleted')
   }
 
@@ -202,7 +205,7 @@ export function GameTemplates() {
                     title="Edit template"
                     aria-label="Edit template"
                   >
-                    <Edit size={14} />
+                    <PencilSimple size={14} />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
@@ -212,7 +215,7 @@ export function GameTemplates() {
                         title="Delete template"
                         aria-label="Delete template"
                       >
-                        <Trash2 size={14} />
+                        <Trash size={14} />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

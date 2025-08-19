@@ -114,7 +114,7 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
       completed: true
     }
 
-    setGameHistory((current) => [...current, completedGame])
+    setGameHistory((current) => [...(current || []), completedGame])
     setCurrentGame(null)
     
     if (game.isCooperative) {
@@ -209,7 +209,7 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                                   return char
                                 } else if (char) {
                                   // New format with name and type
-                                  const parts = []
+                                  const parts: string[] = []
                                   if (char.name) parts.push(char.name)
                                   if (char.type) parts.push(`(${char.type})`)
                                   return parts.join(' ')

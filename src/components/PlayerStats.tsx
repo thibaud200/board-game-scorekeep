@@ -4,12 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
-import { Trophy, TrendingUp, Target, Calendar } from '@phosphor-icons/react'
+import { Trophy, TrendUp, Target, Calendar } from '@phosphor-icons/react'
 import { Player, GameSession } from '@/App'
 
 export function PlayerStats() {
-  const [players] = useKV<Player[]>('players', [])
-  const [gameHistory] = useKV<GameSession[]>('gameHistory', [])
+  const [playersData] = useKV<Player[]>('players', [])
+  const [gameHistoryData] = useKV<GameSession[]>('gameHistory', [])
+
+  // Ensure data is always an array
+  const players = playersData || []
+  const gameHistory = gameHistoryData || []
 
   const completedGames = useMemo(() => gameHistory.filter(game => game.completed), [gameHistory])
 
@@ -77,7 +81,7 @@ export function PlayerStats() {
         
         <Card>
           <CardContent className="py-12 text-center">
-            <TrendingUp size={48} className="mx-auto mb-4 text-muted-foreground" />
+            <TrendUp size={48} className="mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-medium mb-2">No players added yet</h3>
             <p className="text-muted-foreground">Add players to see their statistics</p>
           </CardContent>

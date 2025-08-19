@@ -6,14 +6,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Plus, Trash, Edit, Users } from '@phosphor-icons/react'
+import { Plus, Trash, PencilSimple, Users } from '@phosphor-icons/react'
 import { Player } from '@/App'
 
 export function PlayerManager() {
-  const [players, setPlayers] = useKV<Player[]>('players', [])
+  const [playersData, setPlayers] = useKV<Player[]>('players', [])
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
   const [playerName, setPlayerName] = useState('')
+
+  // Ensure players is always an array
+  const players = playersData || []
 
   const handleAddPlayer = () => {
     if (!playerName.trim()) return
@@ -23,7 +26,7 @@ export function PlayerManager() {
       name: playerName.trim(),
     }
 
-    setPlayers((current) => [...current, newPlayer])
+    setPlayers((current) => [...(current || []), newPlayer])
     setPlayerName('')
     setShowAddDialog(false)
   }
@@ -37,7 +40,7 @@ export function PlayerManager() {
     if (!editingPlayer || !playerName.trim()) return
 
     setPlayers((current) =>
-      current.map((player) =>
+      (current || []).map((player) =>
         player.id === editingPlayer.id
           ? { ...player, name: playerName.trim() }
           : player
@@ -48,7 +51,7 @@ export function PlayerManager() {
   }
 
   const handleDeletePlayer = (playerId: string) => {
-    setPlayers((current) => current.filter((player) => player.id !== playerId))
+    setPlayers((current) => (current || []).filter((player) => player.id !== playerId))
   }
 
   const getPlayerInitials = (name: string) => {
@@ -163,14 +166,14 @@ export function PlayerManager() {
                       size="sm"
                       onClick={() => handleEditPlayer(player)}
                     >
-                      <Edit size={16} />
+                      <PencilSimple size={16} />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeletePlayer(player.id)}
                     >
-                      <Trash2 size={16} />
+                      <Trash size={16} />
                     </Button>
                   </div>
                 </div>
