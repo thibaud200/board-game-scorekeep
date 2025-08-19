@@ -205,6 +205,9 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                       setWinCondition('cooperative')
                     } else {
                       setWinCondition('highest')
+                      // Clear character data when switching to non-cooperative
+                      setPlayerCharacters({})
+                      setPlayerCharacterNames({})
                     }
                   }}
                 />
@@ -290,7 +293,7 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                         <span className="font-medium flex-1">{player.name}</span>
                       </div>
                       
-                      {isSelected && selectedTemplate?.hasCharacters && selectedTemplate.characters && (
+                      {isSelected && isCooperative && selectedTemplate?.hasCharacters && selectedTemplate.characters && (
                         <div className="ml-6 mr-3 space-y-2">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
