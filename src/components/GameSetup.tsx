@@ -246,7 +246,7 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                       >
                         <Checkbox
                           checked={selectedExtensions.includes(extension)}
-                          onChange={() => handleExtensionToggle(extension)}
+                          onCheckedChange={() => handleExtensionToggle(extension)}
                         />
                         <span className="text-sm flex-1">{extension}</span>
                       </div>
@@ -280,7 +280,7 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                       >
                         <Checkbox
                           checked={isSelected}
-                          onChange={() => handlePlayerToggle(player.id)}
+                          onCheckedChange={() => handlePlayerToggle(player.id)}
                         />
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-secondary text-secondary-foreground text-sm">
