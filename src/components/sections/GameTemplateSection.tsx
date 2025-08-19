@@ -404,5 +404,6 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
           </DialogContent>
         </Dialog>
       </div>
+    </div>
   )
 }
