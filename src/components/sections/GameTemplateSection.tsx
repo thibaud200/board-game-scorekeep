@@ -368,12 +368,6 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
                           </Dialog>
                         </>
                       )}
-
-                      {stats.totalGames === 0 && (
-                        <div className="text-center py-2 text-muted-foreground">
-                          <div className="text-sm">No games played yet</div>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 )
@@ -393,6 +387,8 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
             </Card>
           )}
         </div>
+
+
 
         {/* Edit Template Dialog */}
         <Dialog open={editingTemplate !== null} onOpenChange={(open) => !open && setEditingTemplate(null)}>
