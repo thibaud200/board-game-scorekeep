@@ -183,7 +183,20 @@ export function GameHistory() {
                               <div className="font-medium text-sm">{player.name}</div>
                               {game.characters && game.characters[player.id] && (
                                 <div className="text-xs text-muted-foreground">
-                                  {game.characters[player.id]}
+                                  {(() => {
+                                    const char = game.characters[player.id]
+                                    if (typeof char === 'string') {
+                                      // Legacy format - just display the string
+                                      return char
+                                    } else if (char) {
+                                      // New format with name and type
+                                      const parts = []
+                                      if (char.name) parts.push(char.name)
+                                      if (char.type) parts.push(`(${char.type})`)
+                                      return parts.join(' ')
+                                    }
+                                    return ''
+                                  })()}
                                 </div>
                               )}
                             </div>

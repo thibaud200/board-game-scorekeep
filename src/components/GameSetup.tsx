@@ -25,6 +25,7 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
   const [winCondition, setWinCondition] = useState<'highest' | 'lowest' | 'cooperative'>('highest')
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>([])
   const [playerCharacters, setPlayerCharacters] = useState<Record<string, string>>({})
+  const [playerCharacterNames, setPlayerCharacterNames] = useState<Record<string, string>>({})
   
   const selectedTemplate = gameTemplates.find(t => t.name === gameType)
 
@@ -36,11 +37,13 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
       setWinCondition(template.isCooperativeByDefault ? 'cooperative' : 'highest')
       setSelectedExtensions([])
       setPlayerCharacters({})
+      setPlayerCharacterNames({})
     } else {
       setIsCooperative(false)
       setWinCondition('highest')
       setSelectedExtensions([])
       setPlayerCharacters({})
+      setPlayerCharacterNames({})
     }
   }
 
@@ -53,6 +56,10 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
       // Remove character assignment if player is deselected
       if (!newSelected.includes(playerId)) {
         setPlayerCharacters(prev => {
+          const { [playerId]: removed, ...rest } = prev
+          return rest
+        })
+        setPlayerCharacterNames(prev => {
           const { [playerId]: removed, ...rest } = prev
           return rest
         })
@@ -77,8 +84,34 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
     }))
   }
 
+  const handleCharacterNameChange = (playerId: string, name: string) => {
+    setPlayerCharacterNames(prev => ({
+      ...prev,
+      [playerId]: name
+    }))
+  }
+
   const handleStartGame = () => {
     if (!gameType.trim() || selectedPlayers.length < 2) return
+
+    // Create characters object if there are character assignments
+    let charactersData: Record<string, { name?: string; type?: string }> | undefined
+    if (Object.keys(playerCharacters).length > 0 || Object.keys(playerCharacterNames).length > 0) {
+      charactersData = {}
+      selectedPlayers.forEach(playerId => {
+        const charName = playerCharacterNames[playerId]
+        const charType = playerCharacters[playerId]
+        if (charName || charType) {
+          charactersData![playerId] = {
+            name: charName || undefined,
+            type: charType || undefined
+          }
+        }
+      })
+      if (Object.keys(charactersData).length === 0) {
+        charactersData = undefined
+      }
+    }
 
     const newGame: GameSession = {
       id: Date.now().toString(),
@@ -89,7 +122,7 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
         acc[playerId] = 0
         return acc
       }, {} as Record<string, number>),
-      characters: Object.keys(playerCharacters).length > 0 ? playerCharacters : undefined,
+      characters: charactersData,
       extensions: selectedExtensions.length > 0 ? selectedExtensions : undefined,
       winCondition,
       date: new Date().toISOString(),
@@ -258,22 +291,41 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                       </div>
                       
                       {isSelected && selectedTemplate?.hasCharacters && selectedTemplate.characters && (
-                        <div className="ml-6 mr-3">
-                          <Select
-                            value={playerCharacters[player.id] || ''}
-                            onValueChange={(value) => handleCharacterSelect(player.id, value)}
-                          >
-                            <SelectTrigger className="h-10">
-                              <SelectValue placeholder="Select character" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {selectedTemplate.characters.map(character => (
-                                <SelectItem key={character} value={character}>
-                                  {character}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <div className="ml-6 mr-3 space-y-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <Label htmlFor={`character-name-${player.id}`} className="text-xs text-muted-foreground">
+                                Character Name
+                              </Label>
+                              <Input
+                                id={`character-name-${player.id}`}
+                                placeholder="Enter character name"
+                                className="h-9 text-sm"
+                                value={playerCharacterNames[player.id] || ''}
+                                onChange={(e) => handleCharacterNameChange(player.id, e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`character-type-${player.id}`} className="text-xs text-muted-foreground">
+                                Character Type
+                              </Label>
+                              <Select
+                                value={playerCharacters[player.id] || ''}
+                                onValueChange={(value) => handleCharacterSelect(player.id, value)}
+                              >
+                                <SelectTrigger className="h-9">
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {selectedTemplate.characters.map(character => (
+                                    <SelectItem key={character} value={character}>
+                                      {character}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

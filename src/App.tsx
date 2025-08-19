@@ -17,7 +17,7 @@ export interface GameSession {
   isCooperative: boolean
   players: string[]
   scores: Record<string, number>
-  characters?: Record<string, string> // playerId -> character name
+  characters?: Record<string, { name?: string; type?: string }> // playerId -> { name, type }
   extensions?: string[]
   winner?: string
   winCondition: 'highest' | 'lowest' | 'cooperative'

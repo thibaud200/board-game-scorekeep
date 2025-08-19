@@ -32,6 +32,11 @@
 - **Why it matters**: Consistent experience across all devices
 - **Success criteria**: Smooth interaction on screens from 320px to 1920px+
 
+### Enhanced Character Assignment
+- **What it does**: Allows players to have both custom character names and select from predefined character types (e.g., "Mike (Psychic)")
+- **Why it matters**: Provides flexibility for role-playing games while maintaining template structure
+- **Success criteria**: Clear input for character name and type selection, proper display in game and history
+
 ## Design Direction
 
 ### Visual Tone & Identity

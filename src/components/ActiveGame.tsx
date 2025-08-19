@@ -202,7 +202,20 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                           <h3 className="font-medium truncate">{player.name}</h3>
                           {game.characters && game.characters[player.id] && (
                             <div className="text-xs text-muted-foreground truncate">
-                              {game.characters[player.id]}
+                              {(() => {
+                                const char = game.characters[player.id]
+                                if (typeof char === 'string') {
+                                  // Legacy format - just display the string
+                                  return char
+                                } else if (char) {
+                                  // New format with name and type
+                                  const parts = []
+                                  if (char.name) parts.push(char.name)
+                                  if (char.type) parts.push(`(${char.type})`)
+                                  return parts.join(' ')
+                                }
+                                return ''
+                              })()}
                             </div>
                           )}
                           {isWinning && !game.isCooperative && (
