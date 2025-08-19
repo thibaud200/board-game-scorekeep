@@ -156,13 +156,13 @@ export function GameTemplates() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 max-w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold">Game Templates</h2>
           <p className="text-muted-foreground">Manage your board game configurations</p>
         </div>
-        <Button onClick={handleAdd}>
+        <Button onClick={handleAdd} className="shrink-0">
           <Plus size={16} className="mr-2" />
           Add Template
         </Button>
@@ -297,13 +297,13 @@ export function GameTemplates() {
       )}
 
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle>
               {editingTemplate ? 'Edit Game Template' : 'Add Game Template'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-6">
+          <div className="space-y-6 overflow-y-auto flex-1 pr-2">
             <div>
               <Label htmlFor="gameName">Game Name</Label>
               <Input
@@ -341,7 +341,7 @@ export function GameTemplates() {
                 <div className="space-y-2 pl-6">
                   <Label>Characters</Label>
                   <div className="space-y-2">
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Input
                         value={newCharacterName}
                         onChange={(e) => setNewCharacterName(e.target.value)}
@@ -356,7 +356,7 @@ export function GameTemplates() {
                         className="flex-1"
                         onKeyPress={(e) => e.key === 'Enter' && addCharacter()}
                       />
-                      <Button type="button" onClick={addCharacter}>Add</Button>
+                      <Button type="button" onClick={addCharacter} className="shrink-0">Add</Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Add character name and type (Explorer, Scholar, Occultist, Psychic, Dilettante, Athlete)
@@ -393,14 +393,15 @@ export function GameTemplates() {
               {formData.hasExtensions && (
                 <div className="space-y-2 pl-6">
                   <Label>Extensions</Label>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input
                       value={newExtension}
                       onChange={(e) => setNewExtension(e.target.value)}
                       placeholder="Add extension name"
+                      className="flex-1"
                       onKeyPress={(e) => e.key === 'Enter' && addExtension()}
                     />
-                    <Button type="button" onClick={addExtension}>Add</Button>
+                    <Button type="button" onClick={addExtension} className="shrink-0">Add</Button>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {formData.extensions.map(extension => (
@@ -417,15 +418,15 @@ export function GameTemplates() {
                 </div>
               )}
             </div>
-
-            <div className="flex gap-2">
-              <Button onClick={handleSave} className="flex-1">
-                {editingTemplate ? 'Update Template' : 'Add Template'}
-              </Button>
-              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-                Cancel
-              </Button>
-            </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t shrink-0">
+            <Button onClick={handleSave} className="flex-1">
+              {editingTemplate ? 'Update Template' : 'Add Template'}
+            </Button>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)} className="flex-1">
+              Cancel
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

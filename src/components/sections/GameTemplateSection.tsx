@@ -182,7 +182,7 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
         />
       </div>
 
-      <div className="flex gap-2 pt-4">
+      <div className="flex flex-col sm:flex-row gap-2 pt-4">
         <Button onClick={saveTemplate} disabled={!formData.name.trim()} className="flex-1">
           {editingTemplate ? 'Save Changes' : 'Add Template'}
         </Button>
@@ -205,201 +205,204 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
   )
 
   return (
-    <div className="container mx-auto px-4 py-4 md:py-8">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft size={16} className="mr-2" />
-          Back
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl md:text-3xl font-bold text-foreground">Game Templates</h1>
-          <p className="text-muted-foreground text-sm md:text-base">Manage your game configurations</p>
+    <div className="min-h-screen bg-background overflow-hidden">
+      <div className="container mx-auto px-4 py-4 md:py-8 max-w-full">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+          <Button variant="ghost" size="sm" onClick={onBack} className="self-start">
+            <ArrowLeft size={16} className="mr-2" />
+            Back
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Game Templates</h1>
+            <p className="text-muted-foreground text-sm md:text-base">Manage your game configurations</p>
+          </div>
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+            <DialogTrigger asChild>
+              <Button className="self-start sm:self-auto">
+                <Plus size={16} className="mr-2" />
+                Add Template
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Game Template</DialogTitle>
+              </DialogHeader>
+              <DialogForm />
+            </DialogContent>
+          </Dialog>
         </div>
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus size={16} className="mr-2" />
-              Add Template
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
+
+        {/* Templates Grid */}
+        <div className="overflow-y-auto">
+          {gameTemplates.length > 0 ? (
+            <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+              {gameTemplates.map((template) => {
+                const stats = getTemplateStats(template)
+                
+                return (
+                  <Card key={template.name} className="hover:shadow-md transition-shadow">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                            <GameController size={16} className="text-primary" />
+                          </div>
+                          {template.name}
+                        </CardTitle>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditDialog(template)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <PencilSimple size={14} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteTemplate(template)}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                          >
+                            <Trash size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Game Features */}
+                      <div className="flex flex-wrap gap-1">
+                        {template.isCooperativeByDefault && (
+                          <Badge variant="outline" className="text-xs">
+                            <Users size={10} className="mr-1" />
+                            Coop
+                          </Badge>
+                        )}
+                        {template.hasCharacters && (
+                          <Badge variant="outline" className="text-xs">
+                            Characters
+                          </Badge>
+                        )}
+                        {template.hasExtensions && (
+                          <Badge variant="outline" className="text-xs">
+                            Extensions
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Quick Stats */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-primary">{stats.totalGames}</div>
+                          <div className="text-xs text-muted-foreground">Games Played</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-primary">{stats.averageDuration}</div>
+                          <div className="text-xs text-muted-foreground">Avg Minutes</div>
+                        </div>
+                      </div>
+
+                      {stats.totalGames > 0 && (
+                        <>
+                          {stats.cooperativeGames > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">Cooperative Games</span>
+                              <span className="font-semibold">{stats.cooperativeGames}</span>
+                            </div>
+                          )}
+
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full"
+                                onClick={() => setSelectedTemplate(template)}
+                              >
+                                <ChartBar size={14} className="mr-2" />
+                                View History
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+                              <DialogHeader>
+                                <DialogTitle>{template.name} - Game History</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                {stats.recentGames.length > 0 ? (
+                                  <>
+                                    <div className="text-sm font-medium">Recent Games</div>
+                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                      {stats.recentGames.map((game) => (
+                                        <div key={game.id} className="flex justify-between items-center p-2 border rounded">
+                                          <div>
+                                            <div className="text-xs text-muted-foreground">
+                                              {new Date(game.date).toLocaleDateString()}
+                                            </div>
+                                            <div className="flex items-center gap-1 mt-1">
+                                              <span className="text-sm">{game.players.length} players</span>
+                                              {game.isCooperative && (
+                                                <Badge variant="outline" className="text-xs">
+                                                  <Users size={8} className="mr-1" />
+                                                  Coop
+                                                </Badge>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="text-right">
+                                            {game.duration && (
+                                              <div className="text-sm font-semibold">{game.duration}m</div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-center py-4 text-muted-foreground">
+                                    No games played yet
+                                  </div>
+                                )}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </>
+                      )}
+
+                      {stats.totalGames === 0 && (
+                        <div className="text-center py-2 text-muted-foreground">
+                          <div className="text-sm">No games played yet</div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          ) : (
+            <Card className="text-center py-8">
+              <CardContent>
+                <GameController size={48} className="mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Game Templates Yet</h3>
+                <p className="text-muted-foreground mb-4">Add your first game template to get started</p>
+                <Button onClick={() => setShowAddDialog(true)}>
+                  <Plus size={16} className="mr-2" />
+                  Add Your First Template
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Edit Template Dialog */}
+        <Dialog open={editingTemplate !== null} onOpenChange={(open) => !open && setEditingTemplate(null)}>
+          <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add Game Template</DialogTitle>
+              <DialogTitle>Edit Game Template</DialogTitle>
             </DialogHeader>
             <DialogForm />
           </DialogContent>
         </Dialog>
       </div>
-
-      {/* Templates Grid */}
-      {gameTemplates.length > 0 ? (
-        <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-          {gameTemplates.map((template) => {
-            const stats = getTemplateStats(template)
-            
-            return (
-              <Card key={template.name} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                        <GameController size={16} className="text-primary" />
-                      </div>
-                      {template.name}
-                    </CardTitle>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog(template)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <PencilSimple size={14} />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteTemplate(template)}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash size={14} />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Game Features */}
-                  <div className="flex flex-wrap gap-1">
-                    {template.isCooperativeByDefault && (
-                      <Badge variant="outline" className="text-xs">
-                        <Users size={10} className="mr-1" />
-                        Coop
-                      </Badge>
-                    )}
-                    {template.hasCharacters && (
-                      <Badge variant="outline" className="text-xs">
-                        Characters
-                      </Badge>
-                    )}
-                    {template.hasExtensions && (
-                      <Badge variant="outline" className="text-xs">
-                        Extensions
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Quick Stats */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{stats.totalGames}</div>
-                      <div className="text-xs text-muted-foreground">Games Played</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">{stats.averageDuration}</div>
-                      <div className="text-xs text-muted-foreground">Avg Minutes</div>
-                    </div>
-                  </div>
-
-                  {stats.totalGames > 0 && (
-                    <>
-                      {stats.cooperativeGames > 0 && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Cooperative Games</span>
-                          <span className="font-semibold">{stats.cooperativeGames}</span>
-                        </div>
-                      )}
-
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full"
-                            onClick={() => setSelectedTemplate(template)}
-                          >
-                            <ChartBar size={14} className="mr-2" />
-                            View History
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>{template.name} - Game History</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            {stats.recentGames.length > 0 ? (
-                              <>
-                                <div className="text-sm font-medium">Recent Games</div>
-                                <div className="space-y-2 max-h-60 overflow-y-auto">
-                                  {stats.recentGames.map((game) => (
-                                    <div key={game.id} className="flex justify-between items-center p-2 border rounded">
-                                      <div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {new Date(game.date).toLocaleDateString()}
-                                        </div>
-                                        <div className="flex items-center gap-1 mt-1">
-                                          <span className="text-sm">{game.players.length} players</span>
-                                          {game.isCooperative && (
-                                            <Badge variant="outline" className="text-xs">
-                                              <Users size={8} className="mr-1" />
-                                              Coop
-                                            </Badge>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="text-right">
-                                        {game.duration && (
-                                          <div className="text-sm font-semibold">{game.duration}m</div>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </>
-                            ) : (
-                              <div className="text-center py-4 text-muted-foreground">
-                                No games played yet
-                              </div>
-                            )}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </>
-                  )}
-
-                  {stats.totalGames === 0 && (
-                    <div className="text-center py-2 text-muted-foreground">
-                      <div className="text-sm">No games played yet</div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      ) : (
-        <Card className="text-center py-8">
-          <CardContent>
-            <GameController size={48} className="mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Game Templates Yet</h3>
-            <p className="text-muted-foreground mb-4">Add your first game template to get started</p>
-            <Button onClick={() => setShowAddDialog(true)}>
-              <Plus size={16} className="mr-2" />
-              Add Your First Template
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Edit Template Dialog */}
-      <Dialog open={editingTemplate !== null} onOpenChange={(open) => !open && setEditingTemplate(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Game Template</DialogTitle>
-          </DialogHeader>
-          <DialogForm />
-        </DialogContent>
-      </Dialog>
-    </div>
   )
 }
