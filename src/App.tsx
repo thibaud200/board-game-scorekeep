@@ -11,6 +11,7 @@ import { GameSetup } from '@/components/GameSetup'
 import { ActiveGame } from '@/components/ActiveGame'
 import { GameHistory } from '@/components/GameHistory'
 import { GameTemplates } from '@/components/GameTemplates'
+import { PlayerStats } from '@/components/PlayerStats'
 
 export interface Player {
   id: string
