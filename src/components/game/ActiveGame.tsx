@@ -170,6 +170,10 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
     }
   }, [game.characters, game.players, players, characterHistory.length])
 
+  /**
+   * Handle character death/revival
+   * Manages character state, updates history, and handles resurrection logic
+   */
   const handleCharacterDeath = (playerId: string, isDead: boolean) => {
     const player = players.find(p => p.id === playerId)
     const activeChar = activeCharacters[playerId]
@@ -238,6 +242,10 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
     setNewCharacterTypes(prev => ({ ...prev, [playerId]: newType }))
   }
 
+  /**
+   * Create a new character to replace a dead one
+   * Validates character uniqueness and updates game state
+   */
   const handleCharacterReplacement = (playerId: string) => {
     const player = players.find(p => p.id === playerId)
     const newName = newCharacterNames[playerId]
@@ -318,8 +326,18 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
     return sorted[0]
   }
 
+  /**
+   * Complete the current game session
+   * Validates required fields (duration, coop result) and saves to database
+   */
   const handleCompleteGame = async () => {
     if (!db) return
+    
+    // Validate required fields
+    if (!sessionDuration || parseInt(sessionDuration) <= 0) {
+      toast.error('Please enter a valid game duration')
+      return
+    }
     
     // For cooperative games, require result selection
     if (game.isCooperative && !coopResult) {
@@ -389,7 +407,10 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                 <div className="flex items-center justify-center gap-4">
                   <div className="flex items-center gap-2">
                     <Clock size={18} className="text-muted-foreground" />
-                    <label htmlFor="sessionDuration" className="text-sm font-medium">Duration (minutes):</label>
+                    <label htmlFor="sessionDuration" className="text-sm font-medium flex items-center gap-1">
+                      Duration (minutes)
+                      <span className="text-xs text-red-500">*</span>
+                    </label>
                   </div>
                   <Input
                     id="sessionDuration"
@@ -397,9 +418,12 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                     value={sessionDuration}
                     onChange={(e) => setSessionDuration(e.target.value)}
                     placeholder="Enter duration"
-                    className="w-24 text-center"
+                    className={`w-24 text-center ${!sessionDuration ? "border-destructive" : ""}`}
                     min="1"
                   />
+                  {!sessionDuration && (
+                    <p className="text-xs text-destructive mt-1">Duration is required to end the game</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -679,7 +703,11 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
           <div className="flex gap-3 justify-center pb-4">
             <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
               <DialogTrigger asChild>
-                <Button size="lg" className="bg-success hover:bg-success/90 text-success-foreground h-12 px-6">
+                <Button 
+                  size="lg" 
+                  className="bg-success hover:bg-success/90 text-success-foreground h-12 px-6"
+                  disabled={!sessionDuration || parseInt(sessionDuration) <= 0}
+                >
                   <CheckCircle size={18} className="mr-2" />
                   Complete Game
                 </Button>

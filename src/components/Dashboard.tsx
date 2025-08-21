@@ -6,7 +6,7 @@ import { Plus, Trophy, Users, GameController, ArrowRight } from '@phosphor-icons
 import { Player, GameSession, GameTemplate } from '@/App'
 import { PlayerSection } from '@/components/sections/PlayerSection'
 import { GameTemplateSection } from '@/components/sections/GameTemplateSection'
-import { GamesPlayedSection } from '@/components/GamesPlayedSection'
+import { GamesPlayedSection } from '@/components/game/GamesPlayedSection'
 import { DatabaseManager } from '@/components/DatabaseManager'
 import { useGameHistory } from '@/lib/database-hooks'
 

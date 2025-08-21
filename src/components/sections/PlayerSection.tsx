@@ -8,7 +8,7 @@ import { ArrowLeft, Plus, Trophy, Users, Trash, PencilSimple, ChartBar } from '@
 import { Player, GameSession } from '@/App'
 import { useDatabase } from '@/lib/database-context'
 import { usePlayers, useGameHistory } from '@/lib/database-hooks'
-import { PlayerStatsDetail } from '@/components/PlayerStatsDetail'
+import { PlayerStatsDetail } from '@/components/player/PlayerStatsDetail'
 import { toast } from 'sonner'
 
 interface PlayerSectionProps {

@@ -203,7 +203,8 @@ app.get('/api/game-sessions', (req, res) => {
     const sessions = db.prepare('SELECT * FROM game_sessions ORDER BY created_at DESC').all()
     res.json(sessions.map(session => ({
       id: session.id,
-      gameType: session.game_type,
+      gameTemplate: session.game_type, // Primary field for consistency
+      gameType: session.game_type, // Keep for backward compatibility
       gameMode: session.game_mode || (session.is_cooperative ? 'cooperative' : 'competitive'), // Fallback for legacy data
       isCooperative: Boolean(session.is_cooperative), // Keep for backward compatibility
       players: JSON.parse(session.players),

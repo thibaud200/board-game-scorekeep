@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Play, Users, GameController, Clock, Trophy, Bookmark } from '@phosphor-icons/react'
+import { ArrowLeft, Play, Users, GameController, Clock, Trophy, Bookmark, Asterisk } from '@phosphor-icons/react'
 import { Player, GameSession, GameTemplate } from '@/App'
 
 interface GameSetupProps {
@@ -31,6 +31,10 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
   
   const selectedTemplate = gameTemplates.find(t => t.name === gameType)
 
+  /**
+   * Handle game type selection from dropdown or custom input
+   * Updates game mode, cooperative settings, and clears character assignments
+   */
   const handleGameTypeChange = (value: string) => {
     setGameType(value)
     const template = gameTemplates.find(t => t.name === value)
@@ -53,6 +57,10 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
     }
   }
 
+  /**
+   * Toggle player selection for the game
+   * Automatically removes character assignments when player is deselected
+   */
   const handlePlayerToggle = (playerId: string) => {
     setSelectedPlayers((current) => {
       const newSelected = current.includes(playerId)
@@ -97,6 +105,10 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
     }))
   }
 
+  /**
+   * Validate inputs and create a new game session
+   * Requires game name and at least 2 players
+   */
   const handleStartGame = () => {
     if (!gameType.trim() || selectedPlayers.length < 2) return
 
@@ -170,7 +182,10 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
-                <Label htmlFor="gameType" className="text-sm font-medium">Game Name</Label>
+                <Label htmlFor="gameType" className="text-sm font-medium flex items-center gap-1">
+                  Game Name
+                  <Asterisk size={8} className="text-destructive" />
+                </Label>
                 <div className="space-y-2">
                   <Select value={gameType} onValueChange={handleGameTypeChange}>
                     <SelectTrigger className="h-11">
@@ -202,8 +217,11 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                     value={gameType}
                     onChange={(e) => setGameType(e.target.value)}
                     placeholder="Or type a custom game name"
-                    className="h-11"
+                    className={`h-11 ${!gameType.trim() ? "border-destructive" : ""}`}
                   />
+                  {!gameType.trim() && (
+                    <p className="text-xs text-destructive">Game name is required</p>
+                  )}
                 </div>
               </div>
 
@@ -343,6 +361,7 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Users size={18} />
                 Select Players ({selectedPlayers.length} selected)
+                <Asterisk size={8} className="text-destructive" />
               </CardTitle>
             </CardHeader>
             <CardContent>

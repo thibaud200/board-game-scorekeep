@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { ArrowLeft, Plus, GameController, Trash, PencilSimple, ChartBar, Users } from '@phosphor-icons/react'
+import { ArrowLeft, Plus, GameController, Trash, PencilSimple, ChartBar, Users, PersonSimple, Package, Asterisk } from '@phosphor-icons/react'
 import { GameTemplate, GameSession } from '@/App'
 import { useDatabase } from '@/lib/database-context'
 import { useGameHistory } from '@/lib/database-hooks'
@@ -51,12 +51,19 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
   return (
     <div className="space-y-4">
       <div>
-        <label className="text-sm font-medium">Game Name</label>
+        <label className="text-sm font-medium flex items-center gap-1">
+          Game Name
+          <Asterisk size={8} className="text-destructive" />
+        </label>
         <Input
           placeholder="Enter game name"
           value={formData.name}
           onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+          className={!formData.name.trim() ? "border-destructive" : ""}
         />
+        {!formData.name.trim() && (
+          <p className="text-xs text-destructive mt-1">Game name is required</p>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -70,7 +77,10 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
 
         {formData.hasCharacters && (
           <div>
-            <label className="text-sm font-medium">Characters (comma-separated)</label>
+            <label className="text-sm font-medium flex items-center gap-1">
+              Characters (comma-separated)
+              <span className="text-xs text-muted-foreground">(optional)</span>
+            </label>
             <Input
               placeholder="e.g., Wizard, Warrior, Thief"
               value={formData.characters}
@@ -89,7 +99,10 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
 
         {formData.hasExtensions && (
           <div>
-            <label className="text-sm font-medium">Extensions (comma-separated)</label>
+            <label className="text-sm font-medium flex items-center gap-1">
+              Extensions (comma-separated)
+              <span className="text-xs text-muted-foreground">(optional)</span>
+            </label>
             <Input
               placeholder="e.g., Base Game, Expansion 1, Expansion 2"
               value={formData.extensions}
@@ -99,7 +112,10 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
         )}
 
         <div className="space-y-3">
-          <label className="text-sm font-medium">Game Modes (select all that apply)</label>
+          <label className="text-sm font-medium flex items-center gap-1">
+            Game Modes (select all that apply)
+            <Asterisk size={8} className="text-destructive" />
+          </label>
           
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
@@ -136,9 +152,16 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
             </div>
           </div>
 
+          {!(formData.supportsCooperative || formData.supportsCompetitive || formData.supportsCampaign) && (
+            <p className="text-xs text-destructive">At least one game mode must be selected</p>
+          )}
+
           {(formData.supportsCooperative || formData.supportsCompetitive || formData.supportsCampaign) && (
             <div className="mt-4">
-              <label className="text-sm font-medium">Default Mode</label>
+              <label className="text-sm font-medium flex items-center gap-1">
+                Default Mode
+                <Asterisk size={8} className="text-destructive" />
+              </label>
               <Select 
                 value={formData.defaultMode} 
                 onValueChange={(value: 'cooperative' | 'competitive' | 'campaign') => 
@@ -166,7 +189,14 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
       </div>
 
       <div className="flex gap-2 pt-4">
-        <Button onClick={saveTemplate} disabled={!formData.name.trim()} className="flex-1">
+        <Button 
+          onClick={saveTemplate} 
+          disabled={
+            !formData.name.trim() || 
+            !(formData.supportsCooperative || formData.supportsCompetitive || formData.supportsCampaign)
+          } 
+          className="flex-1"
+        >
           {editingTemplate ? 'Save Changes' : 'Add Template'}
         </Button>
         <Button 
@@ -427,11 +457,13 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
                         )}
                         {template.hasCharacters && (
                           <Badge variant="outline" className="text-xs">
+                            <PersonSimple size={10} className="mr-1" />
                             Characters
                           </Badge>
                         )}
                         {template.hasExtensions && (
                           <Badge variant="outline" className="text-xs">
+                            <Package size={10} className="mr-1" />
                             Extensions
                           </Badge>
                         )}

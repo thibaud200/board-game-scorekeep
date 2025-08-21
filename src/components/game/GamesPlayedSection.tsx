@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, GameController, Trophy, Users, Clock, Skull, Eye } from '@phosphor-icons/react'
 import { useGameHistory } from '@/lib/database-hooks'
-import { GameTypeDetail } from '@/components/GameTypeDetail'
+import { GameTypeDetail } from '@/components/game/GameTypeDetail'
 
 interface GamesPlayedSectionProps {
   onBack: () => void
