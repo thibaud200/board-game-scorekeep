@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,22 +6,34 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ArrowLeft, Plus, Trophy, Users, Trash, PencilSimple, ChartBar } from '@phosphor-icons/react'
 import { Player, GameSession } from '@/App'
+import { useDatabase } from '@/lib/database-context'
+import { usePlayers, useGameHistory } from '@/lib/database-hooks'
+import { PlayerStatsDetail } from '@/components/PlayerStatsDetail'
 import { toast } from 'sonner'
 
 interface PlayerSectionProps {
   players: Player[]
-  gameHistory: GameSession[]
   onBack: () => void
 }
 
-export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionProps) {
-  const [, setPlayers] = useKV<Player[]>('players', [])
+export function PlayerSection({ players, onBack }: PlayerSectionProps) {
+  const { addPlayer: addPlayerToDB, updatePlayer: updatePlayerInDB, deletePlayer: deletePlayerFromDB } = usePlayers()
+  const { gameHistory } = useGameHistory()
   const [newPlayerName, setNewPlayerName] = useState('')
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
   const [editName, setEditName] = useState('')
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
 
-  const addPlayer = () => {
+  if (selectedPlayer) {
+    return (
+      <PlayerStatsDetail 
+        player={selectedPlayer} 
+        onBack={() => setSelectedPlayer(null)} 
+      />
+    )
+  }
+
+  const handleAddPlayer = async () => {
     if (!newPlayerName.trim()) return
     
     if (players.some(p => p.name.toLowerCase() === newPlayerName.toLowerCase())) {
@@ -30,17 +41,19 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
       return
     }
 
-    const newPlayer: Player = {
-      id: Date.now().toString(),
-      name: newPlayerName.trim()
+    try {
+      await addPlayerToDB({
+        name: newPlayerName.trim()
+      })
+      setNewPlayerName('')
+      toast.success(`Player added successfully`)
+    } catch (error) {
+      console.error('Error adding player:', error)
+      toast.error('Failed to add player')
     }
-
-    setPlayers(current => [...(current || []), newPlayer])
-    setNewPlayerName('')
-    toast.success(`${newPlayer.name} added successfully`)
   }
 
-  const editPlayer = (player: Player) => {
+  const handleEditPlayer = async (player: Player) => {
     if (!editName.trim()) return
     
     if (players.some(p => p.id !== player.id && p.name.toLowerCase() === editName.toLowerCase())) {
@@ -48,23 +61,25 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
       return
     }
 
-    setPlayers(current => 
-      (current || []).map(p => p.id === player.id ? { ...p, name: editName.trim() } : p)
-    )
-    setEditingPlayer(null)
-    setEditName('')
-    toast.success('Player updated successfully')
+    try {
+      await updatePlayerInDB(player.id, { name: editName.trim() })
+      setEditingPlayer(null)
+      setEditName('')
+      toast.success('Player updated successfully')
+    } catch (error) {
+      console.error('Error updating player:', error)
+      toast.error('Failed to update player')
+    }
   }
 
-  const deletePlayer = (player: Player) => {
-    const playerGames = gameHistory.filter(game => game.players.includes(player.id))
-    if (playerGames.length > 0) {
-      toast.error(`Cannot delete ${player.name} - they have game history`)
-      return
+    const handleDeletePlayer = async (playerId: string) => {
+    try {
+      await deletePlayerFromDB(playerId)
+      toast.success('Player deleted successfully')
+    } catch (error) {
+      console.error('Error deleting player:', error)
+      toast.error('Failed to delete player')
     }
-
-    setPlayers(current => (current || []).filter(p => p.id !== player.id))
-    toast.success(`${player.name} removed successfully`)
   }
 
   const getPlayerStats = (player: Player) => {
@@ -72,18 +87,27 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
       game.completed && game.players.includes(player.id)
     )
     
-    const wins = playerGames.filter(game => game.winner === player.id).length
-    const totalGames = playerGames.length
-    const winRate = totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0
+    const coopGames = playerGames.filter(game => game.isCooperative)
+    const competitiveGames = playerGames.filter(game => !game.isCooperative)
+    const competitiveWins = competitiveGames.filter(game => game.winner === player.id).length
+    const coopWins = coopGames.filter(game => 
+      game.cooperativeResult === 'victory'
+    ).length
+    const totalWins = competitiveWins + coopWins
     
-    const totalScore = playerGames.reduce((sum, game) => 
+    const totalGames = playerGames.length
+    const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0
+    
+    const competitiveScore = competitiveGames.reduce((sum, game) => 
       sum + (game.scores[player.id] || 0), 0
     )
-    const averageScore = totalGames > 0 ? Math.round(totalScore / totalGames) : 0
+    const averageScore = competitiveGames.length > 0 
+      ? (competitiveScore / competitiveGames.length).toFixed(1) 
+      : '0.0'
     
     const recentGames = playerGames.slice(-5).reverse()
     
-    return { wins, totalGames, winRate, averageScore, recentGames }
+    return { wins: totalWins, totalGames, winRate, averageScore, recentGames }
   }
 
   return (
@@ -111,10 +135,10 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
               placeholder="Player name"
               value={newPlayerName}
               onChange={(e) => setNewPlayerName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && addPlayer()}
+              onKeyPress={(e) => e.key === 'Enter' && handleAddPlayer()}
               className="flex-1"
             />
-            <Button onClick={addPlayer} disabled={!newPlayerName.trim()}>
+            <Button onClick={handleAddPlayer} disabled={!newPlayerName.trim()}>
               <Plus size={16} className="mr-2" />
               Add
             </Button>
@@ -153,7 +177,7 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => deletePlayer(player)}
+                        onClick={() => handleDeletePlayer(player.id)}
                         className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                       >
                         <Trash size={14} />
@@ -188,53 +212,15 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
                         <span className="font-semibold">{stats.averageScore}</span>
                       </div>
 
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="w-full"
-                            onClick={() => setSelectedPlayer(player)}
-                          >
-                            <ChartBar size={14} className="mr-2" />
-                            View Details
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                          <DialogHeader>
-                            <DialogTitle>{player.name} - Game History</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            {stats.recentGames.length > 0 ? (
-                              <>
-                                <div className="text-sm font-medium">Recent Games</div>
-                                <div className="space-y-2 max-h-60 overflow-y-auto">
-                                  {stats.recentGames.map((game) => (
-                                    <div key={game.id} className="flex justify-between items-center p-2 border rounded">
-                                      <div>
-                                        <div className="font-medium text-sm">{game.gameType}</div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {new Date(game.date).toLocaleDateString()}
-                                        </div>
-                                      </div>
-                                      <div className="text-right">
-                                        <div className="font-semibold">{game.scores[player.id] || 0}</div>
-                                        {game.winner === player.id && (
-                                          <Trophy size={12} className="text-accent inline ml-1" />
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </>
-                            ) : (
-                              <div className="text-center py-4 text-muted-foreground">
-                                No games played yet
-                              </div>
-                            )}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full"
+                        onClick={() => setSelectedPlayer(player)}
+                      >
+                        <ChartBar size={14} className="mr-2" />
+                        View Details
+                      </Button>
                     </>
                   )}
 
@@ -269,11 +255,11 @@ export function PlayerSection({ players, gameHistory, onBack }: PlayerSectionPro
               placeholder="Player name"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && editingPlayer && editPlayer(editingPlayer)}
+              onKeyPress={(e) => e.key === 'Enter' && editingPlayer && handleEditPlayer(editingPlayer)}
             />
             <div className="flex gap-2">
               <Button 
-                onClick={() => editingPlayer && editPlayer(editingPlayer)}
+                onClick={() => editingPlayer && handleEditPlayer(editingPlayer)}
                 disabled={!editName.trim()}
                 className="flex-1"
               >

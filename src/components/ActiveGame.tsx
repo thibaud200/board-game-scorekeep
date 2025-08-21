@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useDatabase } from '@/lib/database-context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Trophy, Plus, Minus, CheckCircle, Clock, Play, Pause } from '@phosphor-icons/react'
-import { Player, GameSession } from '@/App'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
+import { Trophy, Plus, Minus, CheckCircle, Clock, Play, Pause, User } from '@phosphor-icons/react'
+import { Player, GameSession, CharacterEvent } from '@/App'
 import { toast } from 'sonner'
 
 interface ActiveGameProps {
@@ -16,38 +18,94 @@ interface ActiveGameProps {
   onGameComplete: () => void
 }
 
+// Standard character types for consistency
+const CHARACTER_TYPES = [
+  'Explorer',
+  'Scholar', 
+  'Occultist',
+  'Psychic',
+  'Dilettante',
+  'Athlete',
+  'Detective',
+  'Medic',
+  'Scientist',
+  'Artist',
+  'Engineer',
+  'Archaeologist'
+]
+
 export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
-  const [currentGame, setCurrentGame] = useKV<GameSession | null>('currentGame', null)
-  const [gameHistory, setGameHistory] = useKV<GameSession[]>('gameHistory', [])
+  const { db } = useDatabase()
+  const [currentGame, setCurrentGame] = useState<GameSession | null>(game)
   const [showCompleteDialog, setShowCompleteDialog] = useState(false)
-  const [elapsedTime, setElapsedTime] = useState(0)
-  const [isTimerRunning, setIsTimerRunning] = useState(true)
+  const [sessionDuration, setSessionDuration] = useState<string>('') // Manual input for duration
+  const [deadCharacters, setDeadCharacters] = useState<Record<string, boolean>>({}) // Track dead characters
+  const [newCharacterNames, setNewCharacterNames] = useState<Record<string, string>>({}) // New character names
+  const [newCharacterTypes, setNewCharacterTypes] = useState<Record<string, string>>({}) // New character types
+  const [characterHistory, setCharacterHistory] = useState<CharacterEvent[]>([])
+  const [activeCharacters, setActiveCharacters] = useState<Record<string, {name: string, type?: string}>>({})
 
-  // Timer effect
-  useEffect(() => {
-    let interval: number | undefined
+  // Get all used character combinations (name + type) in this session
+  const getUsedCharacterCombinations = () => {
+    const combinations = new Set<string>()
     
-    if (isTimerRunning) {
-      interval = window.setInterval(() => {
-        const startTime = new Date(game.startTime || game.date)
-        const now = new Date()
-        const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000)
-        setElapsedTime(elapsed)
-      }, 1000)
-    }
+    // Add initial characters
+    game.players.forEach(playerId => {
+      const character = game.characters?.[playerId]
+      if (character) {
+        const name = typeof character === 'string' ? character : character.name || ''
+        const type = typeof character === 'string' ? '' : character.type || ''
+        if (name) {
+          combinations.add(`${name.toLowerCase()}|${type.toLowerCase()}`)
+        }
+      }
+    })
+    
+    // Add characters from history
+    characterHistory.forEach(event => {
+      if (event.characterName) {
+        const name = event.characterName.toLowerCase()
+        const type = (event.characterType || '').toLowerCase()
+        combinations.add(`${name}|${type}`)
+      }
+    })
+    
+    return combinations
+  }
 
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [isTimerRunning, game.startTime, game.date])
+  // Check if a character combination is already used
+  const isCharacterCombinationUsed = (name: string, type: string = '') => {
+    const combinations = getUsedCharacterCombinations()
+    const combo = `${name.toLowerCase()}|${type.toLowerCase()}`
+    return combinations.has(combo)
+  }
 
-  // Initialize timer on mount
-  useEffect(() => {
-    const startTime = new Date(game.startTime || game.date)
-    const now = new Date()
-    const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000)
-    setElapsedTime(elapsed)
-  }, [game.startTime, game.date])
+  // Get current character for a player (either active or their last character)
+  const getCurrentCharacterForPlayer = (playerId: string) => {
+    const activeChar = activeCharacters[playerId]
+    if (activeChar) return activeChar
+    
+    // Find last character from history
+    const playerEvents = characterHistory.filter(e => e.playerId === playerId)
+    const lastEvent = playerEvents[playerEvents.length - 1]
+    if (lastEvent) {
+      return {
+        name: lastEvent.characterName,
+        type: lastEvent.characterType
+      }
+    }
+    
+    // Fallback to initial character
+    const character = game.characters?.[playerId]
+    if (character) {
+      return typeof character === 'string' 
+        ? { name: character } 
+        : { name: character.name || '', type: character.type }
+    }
+    
+    return null
+  }
+  const [coopResult, setCoopResult] = useState<'won' | 'lost' | null>(null) // Coop game result
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -76,17 +134,177 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
     updateScore(playerId, currentScore + adjustment)
   }
 
+  // Initialize character history and active characters with initial characters
+  useEffect(() => {
+    if (game.characters && characterHistory.length === 0) {
+      const initialEvents: CharacterEvent[] = []
+      const initialActive: Record<string, {name: string, type?: string}> = {}
+      
+      game.players.forEach(playerId => {
+        const player = players.find(p => p.id === playerId)
+        const character = game.characters?.[playerId]
+        
+        if (player && character) {
+          const characterName = typeof character === 'string' ? character : (character.name || 'Unknown Character')
+          const characterType = typeof character === 'string' ? undefined : character.type
+          
+          initialEvents.push({
+            playerId,
+            playerName: player.name,
+            characterName,
+            characterType,
+            eventType: 'initial',
+            timestamp: new Date().toISOString()
+          })
+          
+          // Set as active character
+          initialActive[playerId] = {
+            name: characterName,
+            type: characterType
+          }
+        }
+      })
+      
+      setCharacterHistory(initialEvents)
+      setActiveCharacters(initialActive)
+    }
+  }, [game.characters, game.players, players, characterHistory.length])
+
+  const handleCharacterDeath = (playerId: string, isDead: boolean) => {
+    const player = players.find(p => p.id === playerId)
+    const activeChar = activeCharacters[playerId]
+    
+    if (isDead && player && activeChar) {
+      // Mark character as dead
+      setDeadCharacters(prev => ({ ...prev, [playerId]: true }))
+      
+      // Add death event to history
+      const deathEvent: CharacterEvent = {
+        playerId,
+        playerName: player.name,
+        characterName: activeChar.name,
+        characterType: activeChar.type,
+        eventType: 'death',
+        timestamp: new Date().toISOString()
+      }
+      
+      setCharacterHistory(prev => [...prev, deathEvent])
+      
+      // Remove from active characters
+      setActiveCharacters(prev => {
+        const updated = { ...prev }
+        delete updated[playerId]
+        return updated
+      })
+    } else if (!isDead) {
+      // Revive character (undo death)
+      setDeadCharacters(prev => ({ ...prev, [playerId]: false }))
+      
+      // Clear any pending new character data
+      setNewCharacterNames(prev => {
+        const updated = { ...prev }
+        delete updated[playerId]
+        return updated
+      })
+      setNewCharacterTypes(prev => {
+        const updated = { ...prev }
+        delete updated[playerId]
+        return updated
+      })
+      
+      // Restore the last living character as active
+      const playerEvents = characterHistory.filter(e => e.playerId === playerId)
+      const lastLivingChar = playerEvents
+        .filter(e => e.eventType !== 'death')
+        .pop()
+      
+      if (lastLivingChar) {
+        setActiveCharacters(prev => ({
+          ...prev,
+          [playerId]: {
+            name: lastLivingChar.characterName,
+            type: lastLivingChar.characterType
+          }
+        }))
+      }
+    }
+  }
+
+  const handleNewCharacterName = (playerId: string, newName: string) => {
+    setNewCharacterNames(prev => ({ ...prev, [playerId]: newName }))
+  }
+
+  const handleNewCharacterType = (playerId: string, newType: string) => {
+    setNewCharacterTypes(prev => ({ ...prev, [playerId]: newType }))
+  }
+
+  const handleCharacterReplacement = (playerId: string) => {
+    const player = players.find(p => p.id === playerId)
+    const newName = newCharacterNames[playerId]
+    const newType = newCharacterTypes[playerId]
+    
+    if (player && newName) {
+      // Check if this character combination is already used
+      if (isCharacterCombinationUsed(newName, newType || '')) {
+        // Show error message - character already exists
+        return false
+      }
+      
+      // Find the last character for this player
+      const playerEvents = characterHistory.filter(e => e.playerId === playerId)
+      const lastCharacter = playerEvents[playerEvents.length - 1]
+      
+      const replacementEvent: CharacterEvent = {
+        playerId,
+        playerName: player.name,
+        characterName: newName,
+        characterType: newType,
+        eventType: 'replacement',
+        timestamp: new Date().toISOString(),
+        previousCharacter: lastCharacter ? {
+          name: lastCharacter.characterName,
+          type: lastCharacter.characterType
+        } : undefined
+      }
+      
+      setCharacterHistory(prev => [...prev, replacementEvent])
+      
+      // Set as new active character
+      setActiveCharacters(prev => ({
+        ...prev,
+        [playerId]: {
+          name: newName,
+          type: newType
+        }
+      }))
+      
+      // Clear the input fields
+      setNewCharacterNames(prev => {
+        const updated = { ...prev }
+        delete updated[playerId]
+        return updated
+      })
+      setNewCharacterTypes(prev => {
+        const updated = { ...prev }
+        delete updated[playerId]
+        return updated
+      })
+      
+      // Mark as no longer dead since they have a new character
+      setDeadCharacters(prev => ({ ...prev, [playerId]: false }))
+      
+      return true
+    }
+    return false
+  }
+
   const getSortedPlayers = () => {
     const gamePlayers = players.filter(p => game.players.includes(p.id))
     return gamePlayers.sort((a, b) => {
       const scoreA = game.scores[a.id] || 0
       const scoreB = game.scores[b.id] || 0
-      
-      if (game.winCondition === 'highest') {
-        return scoreB - scoreA
-      } else {
-        return scoreA - scoreB
-      }
+      // Default to highest score wins for sorting
+      return scoreB - scoreA
     })
   }
 
@@ -100,29 +318,41 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
     return sorted[0]
   }
 
-  const handleCompleteGame = () => {
+  const handleCompleteGame = async () => {
+    if (!db) return
+    
+    // For cooperative games, require result selection
+    if (game.isCooperative && !coopResult) {
+      toast.error('Please select if the scenario was won or lost')
+      return
+    }
+    
     const winner = game.isCooperative ? undefined : getCurrentWinner()
     const now = new Date()
-    const startTime = new Date(game.startTime || game.date)
-    const duration = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60)) // duration in minutes
+    const duration = sessionDuration ? parseInt(sessionDuration) : 0 // Use manual duration input
     
     const completedGame: GameSession = {
       ...game,
-      winner: winner?.id,
       endTime: now.toISOString(),
-      duration,
-      completed: true
+      duration: sessionDuration || '0',
+      cooperativeResult: game.isCooperative ? (coopResult === 'won' ? 'victory' : coopResult === 'lost' ? 'defeat' : undefined) : undefined,
+      characterHistory // Include the full character history
     }
 
-    setGameHistory((current) => [...(current || []), completedGame])
-    setCurrentGame(null)
-    
-    if (game.isCooperative) {
-      toast.success(`Cooperative game completed! Great teamwork! 🎉`)
-    } else {
-      toast.success(`Game completed! ${winner?.name} wins! 🎉`)
+    try {
+      await db.addGameSession(completedGame)
+      setCurrentGame(null)
+      
+      if (game.isCooperative) {
+        toast.success(`Cooperative game completed! Great teamwork! 🎉`)
+      } else {
+        toast.success(`Game completed! ${winner?.name} wins! 🎉`)
+      }
+      onGameComplete()
+    } catch (error) {
+      console.error('Error saving completed game:', error)
+      toast.error('Failed to save game completion')
     }
-    onGameComplete()
   }
 
   const getPlayerInitials = (name: string) => {
@@ -143,21 +373,14 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
         <div className="max-w-4xl mx-auto space-y-4 md:space-y-6">
           <div className="text-center space-y-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">{game.gameType}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">{game.gameTemplate}</h1>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-muted-foreground">
                 <span className="text-sm">
-                  {game.isCooperative ? 'Cooperative Game' : 
-                   game.winCondition === 'highest' ? 'Highest score wins' : 'Lowest score wins'}
+                  {game.gameMode ? 
+                    `${game.gameMode.charAt(0).toUpperCase() + game.gameMode.slice(1)} Game` : 
+                    (game.isCooperative ? 'Cooperative Game' : 'Competitive Game')
+                  }
                 </span>
-                {game.extensions && game.extensions.length > 0 && (
-                  <div className="flex flex-wrap gap-1 justify-center">
-                    {game.extensions.map(ext => (
-                      <Badge key={ext} variant="outline" className="text-xs">
-                        {ext}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
             
@@ -166,18 +389,17 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                 <div className="flex items-center justify-center gap-4">
                   <div className="flex items-center gap-2">
                     <Clock size={18} className="text-muted-foreground" />
-                    <span className="text-xl md:text-2xl font-mono font-bold">
-                      {formatTime(elapsedTime)}
-                    </span>
+                    <label htmlFor="sessionDuration" className="text-sm font-medium">Duration (minutes):</label>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsTimerRunning(!isTimerRunning)}
-                    className="h-8 w-8 p-0"
-                  >
-                    {isTimerRunning ? <Pause size={14} /> : <Play size={14} />}
-                  </Button>
+                  <Input
+                    id="sessionDuration"
+                    type="number"
+                    value={sessionDuration}
+                    onChange={(e) => setSessionDuration(e.target.value)}
+                    placeholder="Enter duration"
+                    className="w-24 text-center"
+                    min="1"
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -200,24 +422,6 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                         </Avatar>
                         <div className="min-w-0 flex-1">
                           <h3 className="font-medium truncate">{player.name}</h3>
-                          {game.characters && game.characters[player.id] && (
-                            <div className="text-xs text-muted-foreground truncate">
-                              {(() => {
-                                const char = game.characters[player.id]
-                                if (typeof char === 'string') {
-                                  // Legacy format - just display the string
-                                  return char
-                                } else if (char) {
-                                  // New format with name and type
-                                  const parts: string[] = []
-                                  if (char.name) parts.push(char.name)
-                                  if (char.type) parts.push(`(${char.type})`)
-                                  return parts.join(' ')
-                                }
-                                return ''
-                              })()}
-                            </div>
-                          )}
                           {isWinning && !game.isCooperative && (
                             <Badge variant="secondary" className="text-xs mt-1">
                               <Trophy size={10} className="mr-1" />
@@ -226,71 +430,214 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm text-muted-foreground">#{getPlayerPosition(player.id)}</div>
-                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="text-center">
-                      <div className="text-2xl md:text-3xl font-bold text-primary">{score}</div>
-                      <div className="text-sm text-muted-foreground">points</div>
-                    </div>
+                    {/* Dead Characters List - only show if there are dead characters for this player */}
+                    {game.characters && game.characters[player.id] && (() => {
+                      const playerEvents = characterHistory.filter(e => e.playerId === player.id)
+                      const deadEvents = playerEvents.filter(e => e.eventType === 'death')
+                      
+                      if (deadEvents.length === 0) return null
+                      
+                      return (
+                        <div className="space-y-2">
+                          <div className="text-xs font-medium text-muted-foreground">Previous Characters:</div>
+                          <div className="space-y-1">
+                            {deadEvents.map((event, index) => (
+                              <div key={`${event.playerId}-${event.timestamp}-${index}`} className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                                <span>💀</span>
+                                <span>{event.characterName}{event.characterType ? ` (${event.characterType})` : ''}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })()}
                     
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => adjustScore(player.id, -1)}
-                        className="flex-1 h-10"
-                      >
-                        <Minus size={16} />
-                      </Button>
-                      
-                      <Input
-                        type="number"
-                        value={score}
-                        onChange={(e) => updateScore(player.id, parseInt(e.target.value) || 0)}
-                        className="text-center font-medium h-10 text-lg"
-                        min="0"
-                      />
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => adjustScore(player.id, 1)}
-                        className="flex-1 h-10"
-                      >
-                        <Plus size={16} />
-                      </Button>
-                    </div>
+                    {/* Character management */}
+                    {game.characters && game.characters[player.id] && (
+                      <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
+                        {!deadCharacters[player.id] ? (
+                          // Active character section
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-medium text-green-700">
+                                🟢 Active Character
+                              </div>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleCharacterDeath(player.id, true)}
+                                className="h-7 text-xs"
+                              >
+                                Mark as Dead
+                              </Button>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {getCurrentCharacterForPlayer(player.id) ? (
+                                (() => {
+                                  const char = getCurrentCharacterForPlayer(player.id)!
+                                  return `${char.name}${char.type ? ` (${char.type})` : ''}`
+                                })()
+                              ) : 'Unknown Character'}
+                            </div>
+                          </div>
+                        ) : (
+                          // Dead character section
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm font-medium text-red-700 flex items-center gap-2">
+                                  💀 
+                                  <span>
+                                    {getCurrentCharacterForPlayer(player.id) ? (
+                                      (() => {
+                                        const char = getCurrentCharacterForPlayer(player.id)!
+                                        return `${char.name}${char.type ? ` (${char.type})` : ''} - Dead`
+                                      })()
+                                    ) : 'Character Dead'}
+                                  </span>
+                                </div>
+                                {game.allowResurrection && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleCharacterDeath(player.id, false)}
+                                    className="h-7 text-xs"
+                                  >
+                                    Revive
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-3 border-t pt-3">
+                              <div className="text-xs font-medium text-orange-700">
+                                🟡 Add New Character:
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <div>
+                                  <Input
+                                    placeholder="Enter new character name"
+                                    value={newCharacterNames[player.id] || ''}
+                                    onChange={(e) => handleNewCharacterName(player.id, e.target.value)}
+                                    className="h-8 text-sm"
+                                  />
+                                  {newCharacterNames[player.id] && isCharacterCombinationUsed(newCharacterNames[player.id], newCharacterTypes[player.id] || '') && (
+                                    <div className="text-xs text-red-600 mt-1">
+                                      ⚠️ This character combination is already used in this session
+                                    </div>
+                                  )}
+                                </div>
+                                <Select
+                                  value={newCharacterTypes[player.id] || ''}
+                                  onValueChange={(value) => handleNewCharacterType(player.id, value)}
+                                >
+                                  <SelectTrigger className="h-8 text-sm">
+                                    <SelectValue placeholder="Select character type/class" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {CHARACTER_TYPES.map(type => (
+                                      <SelectItem key={type} value={type}>
+                                        {type}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              
+                              {newCharacterNames[player.id] && !isCharacterCombinationUsed(newCharacterNames[player.id], newCharacterTypes[player.id] || '') && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleCharacterReplacement(player.id)}
+                                  className="w-full h-8 text-xs"
+                                >
+                                  <User size={12} className="mr-1" />
+                                  Confirm New Character
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Score section - only show if not cooperative */}
+                    {!game.isCooperative && (
+                      <>
+                        <div className="text-center">
+                          <div className="text-2xl md:text-3xl font-bold text-primary">{score}</div>
+                          <div className="text-sm text-muted-foreground">points</div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => adjustScore(player.id, -1)}
+                            className="flex-1 h-10"
+                          >
+                            <Minus size={16} />
+                          </Button>
+                          
+                          <Input
+                            type="number"
+                            value={score}
+                            onChange={(e) => updateScore(player.id, parseInt(e.target.value) || 0)}
+                            className="text-center font-medium h-10 text-lg"
+                            min="0"
+                          />
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => adjustScore(player.id, 1)}
+                            className="flex-1 h-10"
+                          >
+                            <Plus size={16} />
+                          </Button>
+                        </div>
 
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => adjustScore(player.id, 1)}
-                        className="text-xs h-8"
-                      >
-                        +1
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => adjustScore(player.id, 5)}
-                        className="text-xs h-8"
-                      >
-                        +5
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => adjustScore(player.id, 10)}
-                        className="text-xs h-8"
-                      >
-                        +10
-                      </Button>
-                    </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => adjustScore(player.id, 1)}
+                            className="text-xs h-8"
+                          >
+                            +1
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => adjustScore(player.id, 5)}
+                            className="text-xs h-8"
+                          >
+                            +5
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => adjustScore(player.id, 10)}
+                            className="text-xs h-8"
+                          >
+                            +10
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                    
+                    {/* Cooperative mode - show participation status */}
+                    {game.isCooperative && (
+                      <div className="text-center py-4">
+                        <Badge variant="outline" className="text-sm">
+                          <CheckCircle size={12} className="mr-1" />
+                          Participating
+                        </Badge>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )
@@ -340,19 +687,19 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
               <DialogContent className="mx-4">
                 <DialogHeader>
                   <DialogTitle>Complete Game</DialogTitle>
+                  <DialogDescription>
+                    Confirm the game completion and set the final results.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <p>Are you sure you want to complete this game?</p>
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <Clock size={16} />
-                      <span className="font-medium">Game Duration: {formatTime(elapsedTime)}</span>
+                      <span className="font-medium">
+                        Game Duration: {sessionDuration ? `${sessionDuration} minutes` : 'Not set'}
+                      </span>
                     </div>
-                    {game.extensions && game.extensions.length > 0 && (
-                      <div className="text-sm text-muted-foreground">
-                        Extensions: {game.extensions.join(', ')}
-                      </div>
-                    )}
                   </div>
                   {!game.isCooperative && currentWinner && (
                     <div className="p-4 bg-accent/10 rounded-lg text-center">
@@ -364,11 +711,36 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                     </div>
                   )}
                   {game.isCooperative && (
-                    <div className="p-4 bg-primary/10 rounded-lg text-center">
-                      <Trophy size={24} className="mx-auto mb-2 text-primary" />
-                      <div className="font-medium">Team Effort Complete!</div>
-                      <div className="text-sm text-muted-foreground">
-                        Cooperative victory achieved
+                    <div className="space-y-3">
+                      <div className="p-4 bg-primary/10 rounded-lg text-center">
+                        <Trophy size={24} className="mx-auto mb-2 text-primary" />
+                        <div className="font-medium">Cooperative Scenario</div>
+                        <div className="text-sm text-muted-foreground">
+                          How did the team perform?
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Scenario Result:</label>
+                        <div className="flex gap-2">
+                          <Button
+                            variant={coopResult === 'won' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setCoopResult('won')}
+                            className="flex-1"
+                          >
+                            <Trophy size={14} className="mr-1" />
+                            Victory
+                          </Button>
+                          <Button
+                            variant={coopResult === 'lost' ? 'destructive' : 'outline'}
+                            size="sm"
+                            onClick={() => setCoopResult('lost')}
+                            className="flex-1"
+                          >
+                            ☠️ Defeat
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}

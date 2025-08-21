@@ -1,5 +1,4 @@
 import { useMemo } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -7,14 +6,12 @@ import { Progress } from '@/components/ui/progress'
 import { Trophy, TrendUp, Target, Calendar } from '@phosphor-icons/react'
 import { Player, GameSession } from '@/App'
 
-export function PlayerStats() {
-  const [playersData] = useKV<Player[]>('players', [])
-  const [gameHistoryData] = useKV<GameSession[]>('gameHistory', [])
+interface PlayerStatsProps {
+  players: Player[]
+  gameHistory: GameSession[]
+}
 
-  // Ensure data is always an array
-  const players = playersData || []
-  const gameHistory = gameHistoryData || []
-
+export function PlayerStats({ players, gameHistory }: PlayerStatsProps) {
   const completedGames = useMemo(() => gameHistory.filter(game => game.completed), [gameHistory])
 
   const getPlayerStats = useMemo(() => {
@@ -34,7 +31,7 @@ export function PlayerStats() {
         winRate,
         averageScore,
         gameTypes: gameTypes.size,
-        lastPlayed: playerGames.length > 0 ? new Date(Math.max(...playerGames.map(g => new Date(g.date).getTime()))) : null
+        lastPlayed: playerGames.length > 0 ? new Date(Math.max(...playerGames.filter(g => g.date).map(g => new Date(g.date!).getTime()))) : null
       }
     }
   }, [completedGames])

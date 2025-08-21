@@ -6,16 +6,19 @@ import { Plus, Trophy, Users, GameController, ArrowRight } from '@phosphor-icons
 import { Player, GameSession, GameTemplate } from '@/App'
 import { PlayerSection } from '@/components/sections/PlayerSection'
 import { GameTemplateSection } from '@/components/sections/GameTemplateSection'
+import { GamesPlayedSection } from '@/components/GamesPlayedSection'
+import { DatabaseManager } from '@/components/DatabaseManager'
+import { useGameHistory } from '@/lib/database-hooks'
 
 interface DashboardProps {
   players: Player[]
-  gameHistory: GameSession[]
   gameTemplates: GameTemplate[]
   onStartGame: () => void
 }
 
-export function Dashboard({ players, gameHistory, gameTemplates, onStartGame }: DashboardProps) {
-  const [activeSection, setActiveSection] = useState<'dashboard' | 'players' | 'templates'>('dashboard')
+export function Dashboard({ players, gameTemplates, onStartGame }: DashboardProps) {
+  const { gameHistory } = useGameHistory()
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'players' | 'templates' | 'games-played'>('dashboard')
 
   const completedGames = gameHistory.filter(game => game.completed)
   const recentGames = completedGames.slice(-3).reverse()
@@ -32,7 +35,6 @@ export function Dashboard({ players, gameHistory, gameTemplates, onStartGame }: 
     return (
       <PlayerSection 
         players={players}
-        gameHistory={gameHistory}
         onBack={() => setActiveSection('dashboard')}
       />
     )
@@ -42,7 +44,14 @@ export function Dashboard({ players, gameHistory, gameTemplates, onStartGame }: 
     return (
       <GameTemplateSection 
         gameTemplates={gameTemplates}
-        gameHistory={gameHistory}
+        onBack={() => setActiveSection('dashboard')}
+      />
+    )
+  }
+
+  if (activeSection === 'games-played') {
+    return (
+      <GamesPlayedSection 
         onBack={() => setActiveSection('dashboard')}
       />
     )
@@ -115,12 +124,15 @@ export function Dashboard({ players, gameHistory, gameTemplates, onStartGame }: 
         </Card>
 
         {/* Games Played Card */}
-        <Card>
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveSection('games-played')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Trophy size={18} />
               Games Played
             </CardTitle>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ArrowRight size={16} />
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-primary">{completedGames.length}</div>
@@ -128,7 +140,7 @@ export function Dashboard({ players, gameHistory, gameTemplates, onStartGame }: 
             {completedGames.length > 0 && (
               <div className="mt-2">
                 <p className="text-xs text-muted-foreground">
-                  Last played: {new Date(completedGames[completedGames.length - 1]?.date).toLocaleDateString()}
+                  Last played: {completedGames[completedGames.length - 1]?.date ? new Date(completedGames[completedGames.length - 1].date!).toLocaleDateString() : 'Unknown'}
                 </p>
               </div>
             )}
@@ -167,6 +179,11 @@ export function Dashboard({ players, gameHistory, gameTemplates, onStartGame }: 
         </Card>
       </div>
 
+      {/* Database Management */}
+      <div className="mb-6">
+        <DatabaseManager />
+      </div>
+
       {/* Recent Games */}
       {recentGames.length > 0 && (
         <Card>
@@ -192,11 +209,11 @@ export function Dashboard({ players, gameHistory, gameTemplates, onStartGame }: 
                         )}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        <div>{new Date(game.date).toLocaleDateString()}</div>
+                        <div>{game.date ? new Date(game.date).toLocaleDateString() : 'Unknown date'}</div>
                         <div className="flex items-center gap-2 mt-1">
                           <span>{gamePlayers.length} players</span>
                           {game.duration && (
-                            <span>• {Math.floor(game.duration / 60)}h {game.duration % 60}m</span>
+                            <span>• {Math.floor(Number(game.duration) / 60)}h {Number(game.duration) % 60}m</span>
                           )}
                         </div>
                       </div>

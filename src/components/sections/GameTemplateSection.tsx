@@ -1,23 +1,189 @@
 import { useState } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ArrowLeft, Plus, GameController, Trash, PencilSimple, ChartBar, Users } from '@phosphor-icons/react'
 import { GameTemplate, GameSession } from '@/App'
+import { useDatabase } from '@/lib/database-context'
+import { useGameHistory } from '@/lib/database-hooks'
 import { toast } from 'sonner'
 
 interface GameTemplateSectionProps {
   gameTemplates: GameTemplate[]
-  gameHistory: GameSession[]
   onBack: () => void
 }
 
-export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: GameTemplateSectionProps) {
-  const [, setGameTemplates] = useKV<GameTemplate[]>('gameTemplates', [])
+// DialogForm component moved outside to prevent re-rendering
+interface DialogFormProps {
+  formData: {
+    name: string
+    hasCharacters: boolean
+    characters: string
+    hasExtensions: boolean
+    extensions: string
+    supportsCooperative: boolean
+    supportsCompetitive: boolean
+    supportsCampaign: boolean
+    defaultMode: 'cooperative' | 'competitive' | 'campaign'
+  }
+  setFormData: React.Dispatch<React.SetStateAction<{
+    name: string
+    hasCharacters: boolean
+    characters: string
+    hasExtensions: boolean
+    extensions: string
+    supportsCooperative: boolean
+    supportsCompetitive: boolean
+    supportsCampaign: boolean
+    defaultMode: 'cooperative' | 'competitive' | 'campaign'
+  }>>
+  saveTemplate: () => void
+  onCancel: () => void
+  editingTemplate: GameTemplate | null
+}
+
+function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemplate }: DialogFormProps) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium">Game Name</label>
+        <Input
+          placeholder="Enter game name"
+          value={formData.name}
+          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium">Has Characters/Roles</label>
+          <Switch
+            checked={formData.hasCharacters}
+            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, hasCharacters: checked }))}
+          />
+        </div>
+
+        {formData.hasCharacters && (
+          <div>
+            <label className="text-sm font-medium">Characters (comma-separated)</label>
+            <Input
+              placeholder="e.g., Wizard, Warrior, Thief"
+              value={formData.characters}
+              onChange={(e) => setFormData(prev => ({ ...prev, characters: e.target.value }))}
+            />
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium">Has Extensions</label>
+          <Switch
+            checked={formData.hasExtensions}
+            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, hasExtensions: checked }))}
+          />
+        </div>
+
+        {formData.hasExtensions && (
+          <div>
+            <label className="text-sm font-medium">Extensions (comma-separated)</label>
+            <Input
+              placeholder="e.g., Base Game, Expansion 1, Expansion 2"
+              value={formData.extensions}
+              onChange={(e) => setFormData(prev => ({ ...prev, extensions: e.target.value }))}
+            />
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <label className="text-sm font-medium">Game Modes (select all that apply)</label>
+          
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="cooperative"
+                checked={formData.supportsCooperative}
+                onCheckedChange={(checked) => 
+                  setFormData(prev => ({ ...prev, supportsCooperative: checked as boolean }))
+                }
+              />
+              <label htmlFor="cooperative" className="text-sm">Cooperative</label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="competitive"
+                checked={formData.supportsCompetitive}
+                onCheckedChange={(checked) => 
+                  setFormData(prev => ({ ...prev, supportsCompetitive: checked as boolean }))
+                }
+              />
+              <label htmlFor="competitive" className="text-sm">Competitive</label>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="campaign"
+                checked={formData.supportsCampaign}
+                onCheckedChange={(checked) => 
+                  setFormData(prev => ({ ...prev, supportsCampaign: checked as boolean }))
+                }
+              />
+              <label htmlFor="campaign" className="text-sm">Campaign</label>
+            </div>
+          </div>
+
+          {(formData.supportsCooperative || formData.supportsCompetitive || formData.supportsCampaign) && (
+            <div className="mt-4">
+              <label className="text-sm font-medium">Default Mode</label>
+              <Select 
+                value={formData.defaultMode} 
+                onValueChange={(value: 'cooperative' | 'competitive' | 'campaign') => 
+                  setFormData(prev => ({ ...prev, defaultMode: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {formData.supportsCooperative && (
+                    <SelectItem value="cooperative">Cooperative</SelectItem>
+                  )}
+                  {formData.supportsCompetitive && (
+                    <SelectItem value="competitive">Competitive</SelectItem>
+                  )}
+                  {formData.supportsCampaign && (
+                    <SelectItem value="campaign">Campaign</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex gap-2 pt-4">
+        <Button onClick={saveTemplate} disabled={!formData.name.trim()} className="flex-1">
+          {editingTemplate ? 'Save Changes' : 'Add Template'}
+        </Button>
+        <Button 
+          variant="outline" 
+          onClick={onCancel}
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSectionProps) {
+  const { db } = useDatabase()
+  const { gameHistory } = useGameHistory()
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<GameTemplate | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<GameTemplate | null>(null)
@@ -29,7 +195,10 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
     characters: '',
     hasExtensions: false,
     extensions: '',
-    isCooperativeByDefault: false
+    supportsCooperative: false,
+    supportsCompetitive: false,
+    supportsCampaign: false,
+    defaultMode: 'competitive' as 'cooperative' | 'competitive' | 'campaign'
   })
 
   const resetForm = () => {
@@ -39,7 +208,10 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
       characters: '',
       hasExtensions: false,
       extensions: '',
-      isCooperativeByDefault: false
+      supportsCooperative: false,
+      supportsCompetitive: false,
+      supportsCampaign: false,
+      defaultMode: 'competitive' as 'cooperative' | 'competitive' | 'campaign'
     })
   }
 
@@ -51,13 +223,21 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
       characters: template.characters?.join(', ') || '',
       hasExtensions: template.hasExtensions,
       extensions: template.extensions?.join(', ') || '',
-      isCooperativeByDefault: template.isCooperativeByDefault
+      supportsCooperative: template.supportsCooperative || false,
+      supportsCompetitive: template.supportsCompetitive || false,
+      supportsCampaign: template.supportsCampaign || false,
+      defaultMode: template.defaultMode || 'competitive'
     })
   }
 
-  const saveTemplate = () => {
+  const saveTemplate = async () => {
     if (!formData.name.trim()) {
       toast.error('Game name is required')
+      return
+    }
+
+    if (!db) {
+      toast.error('Database not available')
       return
     }
 
@@ -81,128 +261,73 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
       extensions: formData.hasExtensions && formData.extensions.trim()
         ? formData.extensions.split(',').map(s => s.trim()).filter(s => s)
         : undefined,
-      isCooperativeByDefault: formData.isCooperativeByDefault
+      supportsCooperative: formData.supportsCooperative,
+      supportsCompetitive: formData.supportsCompetitive,
+      supportsCampaign: formData.supportsCampaign,
+      defaultMode: formData.defaultMode
     }
 
-    if (editingTemplate) {
-      setGameTemplates(current => 
-        (current || []).map(t => t.name === editingTemplate.name ? template : t)
-      )
-      toast.success('Game template updated successfully')
-      setEditingTemplate(null)
-    } else {
-      setGameTemplates(current => [...(current || []), template])
-      toast.success('Game template added successfully')
-      setShowAddDialog(false)
+    try {
+      if (editingTemplate) {
+        await db!.updateGameTemplate(editingTemplate.name, template)
+        toast.success('Game template updated successfully')
+        setEditingTemplate(null)
+      } else {
+        await db!.addGameTemplate(template)
+        toast.success('Game template added successfully')
+        setShowAddDialog(false)
+      }
+      resetForm()
+      // The parent component will refresh the templates list
+    } catch (error) {
+      toast.error('Failed to save game template')
     }
-    
-    resetForm()
   }
 
-  const deleteTemplate = (template: GameTemplate) => {
-    const templateGames = gameHistory.filter(game => game.gameType === template.name)
+  const deleteTemplate = async (template: GameTemplate) => {
+    if (!db) return
+    
+    const templateGames = gameHistory.filter(game => game.gameTemplate === template.name)
     if (templateGames.length > 0) {
       toast.error(`Cannot delete ${template.name} - it has game history`)
       return
     }
 
-    setGameTemplates(current => (current || []).filter(t => t.name !== template.name))
-    toast.success(`${template.name} template removed successfully`)
+    try {
+      await db.deleteGameTemplate(template.name)
+      toast.success(`${template.name} template removed successfully`)
+      // The parent component will refresh the templates list
+    } catch (error) {
+      toast.error('Failed to delete game template')
+    }
   }
 
   const getTemplateStats = (template: GameTemplate) => {
     const templateGames = gameHistory.filter(game => 
-      game.completed && game.gameType === template.name
+      game.endTime && game.gameTemplate === template.name
     )
     
     const totalGames = templateGames.length
     const recentGames = templateGames.slice(-5).reverse()
     const cooperativeGames = templateGames.filter(game => game.isCooperative).length
     const averageDuration = totalGames > 0 
-      ? Math.round(templateGames.reduce((sum, game) => sum + (game.duration || 0), 0) / totalGames)
+      ? Math.round(templateGames.reduce((sum, game) => {
+          const duration = typeof game.duration === 'string' ? parseInt(game.duration) : (game.duration || 0)
+          return sum + (duration || 0)
+        }, 0) / totalGames)
       : 0
 
     return { totalGames, recentGames, cooperativeGames, averageDuration }
   }
 
-  const DialogForm = () => (
-    <div className="space-y-4">
-      <div>
-        <label className="text-sm font-medium">Game Name</label>
-        <Input
-          placeholder="Enter game name"
-          value={formData.name}
-          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-        />
-      </div>
-
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium">Has Characters</label>
-        <Switch
-          checked={formData.hasCharacters}
-          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, hasCharacters: checked }))}
-        />
-      </div>
-
-      {formData.hasCharacters && (
-        <div>
-          <label className="text-sm font-medium">Characters (comma separated)</label>
-          <Input
-            placeholder="Detective, Investigator, Scholar..."
-            value={formData.characters}
-            onChange={(e) => setFormData(prev => ({ ...prev, characters: e.target.value }))}
-          />
-        </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium">Has Extensions</label>
-        <Switch
-          checked={formData.hasExtensions}
-          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, hasExtensions: checked }))}
-        />
-      </div>
-
-      {formData.hasExtensions && (
-        <div>
-          <label className="text-sm font-medium">Extensions (comma separated)</label>
-          <Input
-            placeholder="Expansion 1, Expansion 2..."
-            value={formData.extensions}
-            onChange={(e) => setFormData(prev => ({ ...prev, extensions: e.target.value }))}
-          />
-        </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-medium">Cooperative by Default</label>
-        <Switch
-          checked={formData.isCooperativeByDefault}
-          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isCooperativeByDefault: checked }))}
-        />
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-2 pt-4">
-        <Button onClick={saveTemplate} disabled={!formData.name.trim()} className="flex-1">
-          {editingTemplate ? 'Save Changes' : 'Add Template'}
-        </Button>
-        <Button 
-          variant="outline" 
-          onClick={() => {
-            if (editingTemplate) {
-              setEditingTemplate(null)
-            } else {
-              setShowAddDialog(false)
-            }
-            resetForm()
-          }}
-          className="flex-1"
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
-  )
+  const handleCancel = () => {
+    if (editingTemplate) {
+      setEditingTemplate(null)
+    } else {
+      setShowAddDialog(false)
+    }
+    resetForm()
+  }
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
@@ -227,8 +352,17 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
             <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add Game Template</DialogTitle>
+                <DialogDescription>
+                  Create a new game template with custom settings for characters, extensions, and gameplay type.
+                </DialogDescription>
               </DialogHeader>
-              <DialogForm />
+              <DialogForm 
+                formData={formData}
+                setFormData={setFormData}
+                saveTemplate={saveTemplate}
+                onCancel={handleCancel}
+                editingTemplate={editingTemplate}
+              />
             </DialogContent>
           </Dialog>
         </div>
@@ -273,10 +407,22 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
                     <CardContent className="space-y-4">
                       {/* Game Features */}
                       <div className="flex flex-wrap gap-1">
-                        {template.isCooperativeByDefault && (
+                        {template.supportsCooperative && (
                           <Badge variant="outline" className="text-xs">
                             <Users size={10} className="mr-1" />
                             Coop
+                          </Badge>
+                        )}
+                        {template.supportsCompetitive && (
+                          <Badge variant="outline" className="text-xs">
+                            <GameController size={10} className="mr-1" />
+                            Compet
+                          </Badge>
+                        )}
+                        {template.supportsCampaign && (
+                          <Badge variant="outline" className="text-xs">
+                            <ChartBar size={10} className="mr-1" />
+                            Campaign
                           </Badge>
                         )}
                         {template.hasCharacters && (
@@ -327,6 +473,9 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
                             <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
                               <DialogHeader>
                                 <DialogTitle>{template.name} - Game History</DialogTitle>
+                                <DialogDescription>
+                                  View recent games and statistics for this game template.
+                                </DialogDescription>
                               </DialogHeader>
                               <div className="space-y-4">
                                 {stats.recentGames.length > 0 ? (
@@ -337,7 +486,7 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
                                         <div key={game.id} className="flex justify-between items-center p-2 border rounded">
                                           <div>
                                             <div className="text-xs text-muted-foreground">
-                                              {new Date(game.date).toLocaleDateString()}
+                                              {new Date(game.startTime).toLocaleDateString()}
                                             </div>
                                             <div className="flex items-center gap-1 mt-1">
                                               <span className="text-sm">{game.players.length} players</span>
@@ -395,8 +544,17 @@ export function GameTemplateSection({ gameTemplates, gameHistory, onBack }: Game
           <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Game Template</DialogTitle>
+              <DialogDescription>
+                Modify the settings for this game template. Note that changes won't affect existing game history.
+              </DialogDescription>
             </DialogHeader>
-            <DialogForm />
+            <DialogForm 
+              formData={formData}
+              setFormData={setFormData}
+              saveTemplate={saveTemplate}
+              onCancel={handleCancel}
+              editingTemplate={editingTemplate}
+            />
           </DialogContent>
         </Dialog>
       </div>

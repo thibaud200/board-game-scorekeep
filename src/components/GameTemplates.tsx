@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -8,24 +7,30 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Plus, GameController, Users, Trash, PencilSimple } from '@phosphor-icons/react'
+import { Plus, GameController, Users, Trash, PencilSimple, Trophy, Bookmark } from '@phosphor-icons/react'
 import { GameTemplate } from '@/App'
+import { useDatabase } from '@/lib/database-context'
 import { toast } from 'sonner'
 
-export function GameTemplates() {
-  const [gameTemplatesData, setGameTemplates] = useKV<GameTemplate[]>('gameTemplates', [])
+interface GameTemplatesProps {
+  gameTemplates: GameTemplate[]
+}
+
+export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
+  const { db } = useDatabase()
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<GameTemplate | null>(null)
   
-  // Ensure gameTemplates is always an array
-  const gameTemplates = gameTemplatesData || []
   const [formData, setFormData] = useState({
     name: '',
     hasCharacters: false,
     characters: [] as string[],
     hasExtensions: false,
     extensions: [] as string[],
-    isCooperativeByDefault: false
+    supportsCooperative: false,
+    supportsCompetitive: true, // Default to competitive
+    supportsCampaign: false,
+    defaultMode: 'competitive' as 'cooperative' | 'competitive' | 'campaign'
   })
   const [newCharacterName, setNewCharacterName] = useState('')
   const [newCharacterType, setNewCharacterType] = useState('')
@@ -38,7 +43,10 @@ export function GameTemplates() {
       characters: [],
       hasExtensions: false,
       extensions: [],
-      isCooperativeByDefault: false
+      supportsCooperative: false,
+      supportsCompetitive: true,
+      supportsCampaign: false,
+      defaultMode: 'competitive'
     })
     setNewCharacterName('')
     setNewCharacterType('')
@@ -59,14 +67,22 @@ export function GameTemplates() {
       characters: template.characters || [],
       hasExtensions: template.hasExtensions,
       extensions: template.extensions || [],
-      isCooperativeByDefault: template.isCooperativeByDefault
+      supportsCooperative: template.supportsCooperative,
+      supportsCompetitive: template.supportsCompetitive,
+      supportsCampaign: template.supportsCampaign,
+      defaultMode: template.defaultMode
     })
     setShowAddDialog(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
       toast.error('Game name is required')
+      return
+    }
+
+    if (!db) {
+      toast.error('Database not available')
       return
     }
 
@@ -76,32 +92,45 @@ export function GameTemplates() {
       characters: formData.hasCharacters ? formData.characters : undefined,
       hasExtensions: formData.hasExtensions,
       extensions: formData.hasExtensions ? formData.extensions : undefined,
-      isCooperativeByDefault: formData.isCooperativeByDefault
+      supportsCooperative: formData.supportsCooperative,
+      supportsCompetitive: formData.supportsCompetitive,
+      supportsCampaign: formData.supportsCampaign,
+      defaultMode: formData.defaultMode
     }
 
-    if (editingTemplate) {
-      setGameTemplates(current => 
-        (current || []).map(t => t.name === editingTemplate.name ? template : t)
-      )
-      toast.success('Game template updated!')
-    } else {
-      // Check if name already exists
-      if (gameTemplates.some(t => t.name.toLowerCase() === template.name.toLowerCase())) {
-        toast.error('A game template with this name already exists')
-        return
+    try {
+      if (editingTemplate) {
+        await db!.updateGameTemplate(editingTemplate.name, template)
+        toast.success('Game template updated!')
+      } else {
+        // Check if name already exists
+        if (gameTemplates.some(t => t.name.toLowerCase() === template.name.toLowerCase())) {
+          toast.error('A game template with this name already exists')
+          return
+        }
+        
+        await db!.addGameTemplate(template)
+        toast.success('Game template added!')
       }
-      
-      setGameTemplates(current => [...(current || []), template])
-      toast.success('Game template added!')
-    }
 
-    setShowAddDialog(false)
-    resetForm()
+      setShowAddDialog(false)
+      resetForm()
+      // Parent component will refresh templates list
+    } catch (error) {
+      toast.error('Failed to save game template')
+    }
   }
 
-  const handleDelete = (templateName: string) => {
-    setGameTemplates(current => (current || []).filter(t => t.name !== templateName))
-    toast.success('Game template deleted')
+  const handleDelete = async (templateName: string) => {
+    if (!db) return
+    
+    try {
+      await db.deleteGameTemplate(templateName)
+      toast.success('Game template deleted')
+      // Parent component will refresh templates list
+    } catch (error) {
+      toast.error('Failed to delete game template')
+    }
   }
 
   const confirmDelete = (templateName: string) => {
@@ -179,10 +208,22 @@ export function GameTemplates() {
                     {template.name}
                   </CardTitle>
                   <div className="flex gap-1 mt-2">
-                    {template.isCooperativeByDefault && (
+                    {template.supportsCooperative && (
                       <Badge variant="outline" className="text-xs">
                         <Users size={12} className="mr-1" />
                         Coop
+                      </Badge>
+                    )}
+                    {template.supportsCompetitive && (
+                      <Badge variant="secondary" className="text-xs">
+                        <Trophy size={12} className="mr-1" />
+                        Comp
+                      </Badge>
+                    )}
+                    {template.supportsCampaign && (
+                      <Badge variant="default" className="text-xs">
+                        <Bookmark size={12} className="mr-1" />
+                        Campaign
                       </Badge>
                     )}
                     {template.hasCharacters && (
@@ -314,15 +355,77 @@ export function GameTemplates() {
               />
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="cooperative"
-                checked={formData.isCooperativeByDefault}
-                onCheckedChange={(checked) => 
-                  setFormData(prev => ({ ...prev, isCooperativeByDefault: checked as boolean }))
-                }
-              />
-              <Label htmlFor="cooperative">Cooperative game by default</Label>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Supported Game Modes</Label>
+                <p className="text-xs text-muted-foreground mb-3">Select all modes this game template supports (multiple modes can be selected)</p>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="supportsCooperative"
+                      checked={formData.supportsCooperative}
+                      onCheckedChange={(checked) => 
+                        setFormData(prev => ({ ...prev, supportsCooperative: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="supportsCooperative" className="flex items-center gap-2">
+                      <Users size={14} />
+                      Cooperative Mode
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="supportsCompetitive"
+                      checked={formData.supportsCompetitive}
+                      onCheckedChange={(checked) => 
+                        setFormData(prev => ({ ...prev, supportsCompetitive: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="supportsCompetitive" className="flex items-center gap-2">
+                      <Trophy size={14} />
+                      Competitive Mode
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="supportsCampaign"
+                      checked={formData.supportsCampaign}
+                      onCheckedChange={(checked) => 
+                        setFormData(prev => ({ ...prev, supportsCampaign: checked as boolean }))
+                      }
+                    />
+                    <Label htmlFor="supportsCampaign" className="flex items-center gap-2">
+                      <Bookmark size={14} />
+                      Campaign Mode
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              {(formData.supportsCooperative || formData.supportsCompetitive || formData.supportsCampaign) && (
+                <div>
+                  <Label className="text-sm font-medium">Default Mode</Label>
+                  <p className="text-xs text-muted-foreground mb-2">Default mode when creating a new game with this template</p>
+                  <select
+                    value={formData.defaultMode}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      defaultMode: e.target.value as 'cooperative' | 'competitive' | 'campaign' 
+                    }))}
+                    className="w-full px-3 py-2 border border-input rounded-md bg-background"
+                  >
+                    {formData.supportsCooperative && (
+                      <option value="cooperative">Cooperative</option>
+                    )}
+                    {formData.supportsCompetitive && (
+                      <option value="competitive">Competitive</option>
+                    )}
+                    {formData.supportsCampaign && (
+                      <option value="campaign">Campaign</option>
+                    )}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="space-y-4">

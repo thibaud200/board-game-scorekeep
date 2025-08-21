@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Play, Users, GameController, Clock } from '@phosphor-icons/react'
+import { ArrowLeft, Play, Users, GameController, Clock, Trophy, Bookmark } from '@phosphor-icons/react'
 import { Player, GameSession, GameTemplate } from '@/App'
 
 interface GameSetupProps {
@@ -20,7 +20,9 @@ interface GameSetupProps {
 
 export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: GameSetupProps) {
   const [gameType, setGameType] = useState('')
-  const [isCooperative, setIsCooperative] = useState(false)
+  const [gameMode, setGameMode] = useState<'cooperative' | 'competitive' | 'campaign'>('competitive')
+  const [isCooperative, setIsCooperative] = useState(false) // Keep for backward compatibility
+  const [allowResurrection, setAllowResurrection] = useState(false)
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([])
   const [winCondition, setWinCondition] = useState<'highest' | 'lowest' | 'cooperative'>('highest')
   const [selectedExtensions, setSelectedExtensions] = useState<string[]>([])
@@ -33,12 +35,16 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
     setGameType(value)
     const template = gameTemplates.find(t => t.name === value)
     if (template) {
-      setIsCooperative(template.isCooperativeByDefault)
-      setWinCondition(template.isCooperativeByDefault ? 'cooperative' : 'highest')
+      // Set default mode from template
+      const defaultMode = template.defaultMode || 'competitive'
+      setGameMode(defaultMode)
+      setIsCooperative(defaultMode === 'cooperative')
+      setWinCondition(defaultMode === 'cooperative' ? 'cooperative' : 'highest')
       setSelectedExtensions([])
       setPlayerCharacters({})
       setPlayerCharacterNames({})
     } else {
+      setGameMode('competitive')
       setIsCooperative(false)
       setWinCondition('highest')
       setSelectedExtensions([])
@@ -115,19 +121,17 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
 
     const newGame: GameSession = {
       id: Date.now().toString(),
-      gameType: gameType.trim(),
-      isCooperative,
+      gameTemplate: gameType.trim(),
+      gameMode,
+      isCooperative, // Keep for backward compatibility
+      allowResurrection: gameMode === 'cooperative' ? allowResurrection : undefined,
       players: selectedPlayers,
       scores: selectedPlayers.reduce((acc, playerId) => {
         acc[playerId] = 0
         return acc
       }, {} as Record<string, number>),
       characters: charactersData,
-      extensions: selectedExtensions.length > 0 ? selectedExtensions : undefined,
-      winCondition,
-      date: new Date().toISOString(),
       startTime: new Date().toISOString(),
-      completed: false,
     }
 
     onStartGame(newGame)
@@ -177,9 +181,17 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                         <SelectItem key={template.name} value={template.name}>
                           <div className="flex items-center gap-2">
                             {template.name}
-                            {template.isCooperativeByDefault && (
-                              <Badge variant="secondary" className="text-xs">Coop</Badge>
-                            )}
+                            <div className="flex gap-1">
+                              {template.supportsCooperative && (
+                                <Badge variant="outline" className="text-xs">Coop</Badge>
+                              )}
+                              {template.supportsCompetitive && (
+                                <Badge variant="secondary" className="text-xs">Comp</Badge>
+                              )}
+                              {template.supportsCampaign && (
+                                <Badge variant="default" className="text-xs">Campaign</Badge>
+                              )}
+                            </div>
                           </div>
                         </SelectItem>
                       ))}
@@ -195,29 +207,95 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
-                <Checkbox
-                  id="cooperative"
-                  checked={isCooperative}
-                  onCheckedChange={(checked) => {
-                    setIsCooperative(checked as boolean)
-                    if (checked) {
-                      setWinCondition('cooperative')
-                    } else {
-                      setWinCondition('highest')
-                      // Clear character data when switching to non-cooperative
-                      setPlayerCharacters({})
-                      setPlayerCharacterNames({})
-                    }
-                  }}
-                />
-                <Label htmlFor="cooperative" className="flex items-center gap-2 cursor-pointer">
-                  <Users size={16} />
-                  Cooperative Game
-                </Label>
-              </div>
+              {/* Game Mode Selection */}
+              {selectedTemplate && (selectedTemplate.supportsCooperative || selectedTemplate.supportsCompetitive || selectedTemplate.supportsCampaign) && (
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Game Mode</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {selectedTemplate.supportsCooperative && (
+                      <div 
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                          gameMode === 'cooperative' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => {
+                          setGameMode('cooperative')
+                          setIsCooperative(true)
+                          setWinCondition('cooperative')
+                        }}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Users size={16} />
+                          <span className="font-medium text-sm">Cooperative</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Work together as a team</p>
+                      </div>
+                    )}
+                    
+                    {selectedTemplate.supportsCompetitive && (
+                      <div 
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                          gameMode === 'competitive' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => {
+                          setGameMode('competitive')
+                          setIsCooperative(false)
+                          setWinCondition('highest')
+                          setPlayerCharacters({})
+                          setPlayerCharacterNames({})
+                        }}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Trophy size={16} />
+                          <span className="font-medium text-sm">Competitive</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Compete against each other</p>
+                      </div>
+                    )}
+                    
+                    {selectedTemplate.supportsCampaign && (
+                      <div 
+                        className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                          gameMode === 'campaign' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => {
+                          setGameMode('campaign')
+                          setIsCooperative(false)
+                          setWinCondition('highest')
+                        }}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Bookmark size={16} />
+                          <span className="font-medium text-sm">Campaign</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">Multi-session story</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
-              {!isCooperative && (
+              {/* Mode-specific options */}
+              {gameMode === 'cooperative' && (
+                <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <Label className="text-sm font-medium text-blue-800">Cooperative Options</Label>
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="resurrection"
+                      checked={allowResurrection}
+                      onCheckedChange={(checked) => setAllowResurrection(checked as boolean)}
+                    />
+                    <Label htmlFor="resurrection" className="flex items-center gap-2 cursor-pointer text-sm">
+                      <span>🔄</span>
+                      Allow character resurrection
+                    </Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    If enabled, dead characters can be revived during the game. Otherwise, dead characters cannot be reused by any player.
+                  </p>
+                </div>
+              )}
+
+              {(gameMode === 'competitive' || gameMode === 'campaign') && (
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">Win Condition</Label>
                   <RadioGroup value={winCondition} onValueChange={(value: 'highest' | 'lowest') => setWinCondition(value)}>

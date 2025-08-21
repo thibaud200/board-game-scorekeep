@@ -1,18 +1,21 @@
-import { useKV } from '@github/spark/hooks'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Trophy, Calendar, Users, Trash, Clock, GameController } from '@phosphor-icons/react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Trophy, Calendar, Users, Trash, Clock, GameController, Eye, Skull } from '@phosphor-icons/react'
 import { Player, GameSession } from '@/App'
+import { useGameHistory } from '@/lib/database-hooks'
+import { toast } from 'sonner'
+import { useState } from 'react'
 
-export function GameHistory() {
-  const [playersData] = useKV<Player[]>('players', [])
-  const [gameHistoryData, setGameHistory] = useKV<GameSession[]>('gameHistory', [])
+interface GameHistoryProps {
+  players: Player[]
+}
 
-  // Ensure data is always an array
-  const players = playersData || []
-  const gameHistory = gameHistoryData || []
+export function GameHistory({ players }: GameHistoryProps) {
+  const { gameHistory, deleteGameSession } = useGameHistory()
+  const [selectedGame, setSelectedGame] = useState<GameSession | null>(null)
 
   const completedGames = gameHistory.filter(game => game.completed).reverse()
 
@@ -29,11 +32,17 @@ export function GameHistory() {
       .slice(0, 2)
   }
 
-  const handleDeleteGame = (gameId: string) => {
-    setGameHistory((current) => (current || []).filter(game => game.id !== gameId))
+  const handleDeleteGame = async (gameId: string) => {
+    try {
+      await deleteGameSession(gameId)
+      toast.success('Game deleted successfully')
+    } catch (error) {
+      toast.error('Failed to delete game')
+    }
   }
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return 'Unknown'
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -43,14 +52,125 @@ export function GameHistory() {
     })
   }
 
-  const formatDuration = (minutes?: number) => {
-    if (!minutes) return 'Unknown'
+  const formatDuration = (duration?: string | number) => {
+    if (!duration) return 'Unknown'
+    
+    // Convert string to number if needed
+    const minutes = typeof duration === 'string' ? parseFloat(duration) : duration
+    if (isNaN(minutes)) return 'Unknown'
+    
     const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
+    const mins = Math.floor(minutes % 60)
     if (hours > 0) {
       return `${hours}h ${mins}m`
     }
     return `${mins}m`
+  }
+
+  const GameDetailDialog = ({ game }: { game: GameSession }) => {
+    const winner = getPlayer(game.winner || '')
+    const gamePlayers = game.players.map(id => getPlayer(id)).filter(Boolean) as Player[]
+    
+    return (
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <GameController size={20} />
+            {game.gameType}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          {/* Game Info */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm text-muted-foreground">Date</div>
+              <div className="font-medium">{formatDate(game.date)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Duration</div>
+              <div className="font-medium">{formatDuration(game.duration)}</div>
+            </div>
+            <div>
+              <div className="text-sm text-muted-foreground">Mode</div>
+              <div className="font-medium">{game.isCooperative ? 'Cooperative' : 'Competitive'}</div>
+            </div>
+            {game.isCooperative && (
+              <div>
+                <div className="text-sm text-muted-foreground">Result</div>
+                <Badge variant={game.cooperativeResult === 'victory' ? 'default' : 'destructive'}>
+                  {game.cooperativeResult === 'victory' ? 'Victory' : 'Defeat'}
+                </Badge>
+              </div>
+            )}
+          </div>
+
+          {/* Players */}
+          <div>
+            <h3 className="font-medium mb-3">Players ({gamePlayers.length})</h3>
+            <div className="space-y-2">
+              {gamePlayers.map((player) => {
+                const isDead = game.deadCharacters?.[player.id]
+                const newCharacterName = game.newCharacterNames?.[player.id]
+                const score = game.scores[player.id]
+                
+                return (
+                  <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className={isDead ? 'bg-red-100 text-red-600' : ''}>
+                          {getPlayerInitials(player.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{player.name}</span>
+                          {isDead && <Skull size={16} className="text-red-500" />}
+                        </div>
+                        {newCharacterName && (
+                          <div className="text-sm text-muted-foreground">
+                            New character: {newCharacterName}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      {!game.isCooperative && score !== undefined && (
+                        <div className="text-right">
+                          <div className="font-medium">{score}</div>
+                          <div className="text-sm text-muted-foreground">points</div>
+                        </div>
+                      )}
+                      {!game.isCooperative && winner?.id === player.id && (
+                        <Trophy size={16} className="text-yellow-500" />
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Dead Characters Summary */}
+          {game.deadCharacters && Object.keys(game.deadCharacters).some(id => game.deadCharacters![id]) && (
+            <div>
+              <h3 className="font-medium mb-2 flex items-center gap-2">
+                <Skull size={16} className="text-red-500" />
+                Casualties ({Object.values(game.deadCharacters).filter(Boolean).length})
+              </h3>
+              <div className="text-sm text-muted-foreground">
+                {Object.entries(game.deadCharacters)
+                  .filter(([_, isDead]) => isDead)
+                  .map(([playerId]) => getPlayer(playerId)?.name)
+                  .filter(Boolean)
+                  .join(', ')} lost their characters during this session.
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    )
   }
 
   if (completedGames.length === 0) {
@@ -92,9 +212,12 @@ export function GameHistory() {
                     <CardTitle className="flex items-center gap-2">
                       {game.gameType}
                       {game.isCooperative ? (
-                        <Badge variant="outline" className="flex items-center gap-1">
+                        <Badge 
+                          variant={game.cooperativeResult === 'victory' ? 'default' : 'destructive'} 
+                          className="flex items-center gap-1"
+                        >
                           <Users size={12} />
-                          Cooperative
+                          {game.cooperativeResult === 'victory' ? 'Victory' : 'Defeat'}
                         </Badge>
                       ) : winner ? (
                         <Badge variant="secondary" className="flex items-center gap-1">
@@ -140,13 +263,24 @@ export function GameHistory() {
                       </div>
                     )}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteGame(game.id)}
-                  >
-                    <Trash size={16} />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Eye size={16} className="mr-2" />
+                          View Details
+                        </Button>
+                      </DialogTrigger>
+                      <GameDetailDialog game={game} />
+                    </Dialog>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteGame(game.id)}
+                    >
+                      <Trash size={16} />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -8,27 +7,31 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Plus, Trash, PencilSimple, Users } from '@phosphor-icons/react'
 import { Player } from '@/App'
+import { useDatabase } from '@/lib/database-context'
+import { toast } from 'sonner'
 
-export function PlayerManager() {
-  const [playersData, setPlayers] = useKV<Player[]>('players', [])
+interface PlayerManagerProps {
+  players: Player[]
+}
+
+export function PlayerManager({ players }: PlayerManagerProps) {
+  const { db } = useDatabase()
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
   const [playerName, setPlayerName] = useState('')
 
-  // Ensure players is always an array
-  const players = playersData || []
+  const handleAddPlayer = async () => {
+    if (!playerName.trim() || !db) return
 
-  const handleAddPlayer = () => {
-    if (!playerName.trim()) return
-
-    const newPlayer: Player = {
-      id: Date.now().toString(),
-      name: playerName.trim(),
+    try {
+      await db.addPlayer({ name: playerName.trim() })
+      setPlayerName('')
+      setShowAddDialog(false)
+      toast.success('Player added successfully')
+      // Parent component will refresh players list
+    } catch (error) {
+      toast.error('Failed to add player')
     }
-
-    setPlayers((current) => [...(current || []), newPlayer])
-    setPlayerName('')
-    setShowAddDialog(false)
   }
 
   const handleEditPlayer = (player: Player) => {
@@ -36,22 +39,30 @@ export function PlayerManager() {
     setPlayerName(player.name)
   }
 
-  const handleUpdatePlayer = () => {
-    if (!editingPlayer || !playerName.trim()) return
+  const handleUpdatePlayer = async () => {
+    if (!editingPlayer || !playerName.trim() || !db) return
 
-    setPlayers((current) =>
-      (current || []).map((player) =>
-        player.id === editingPlayer.id
-          ? { ...player, name: playerName.trim() }
-          : player
-      )
-    )
-    setPlayerName('')
-    setEditingPlayer(null)
+    try {
+      await db.updatePlayer(editingPlayer.id, { name: playerName.trim() })
+      setPlayerName('')
+      setEditingPlayer(null)
+      toast.success('Player updated successfully')
+      // Parent component will refresh players list
+    } catch (error) {
+      toast.error('Failed to update player')
+    }
   }
 
-  const handleDeletePlayer = (playerId: string) => {
-    setPlayers((current) => (current || []).filter((player) => player.id !== playerId))
+  const handleDeletePlayer = async (playerId: string) => {
+    if (!db) return
+    
+    try {
+      await db.deletePlayer(playerId)
+      toast.success('Player deleted successfully')
+      // Parent component will refresh players list
+    } catch (error) {
+      toast.error('Failed to delete player')
+    }
   }
 
   const getPlayerInitials = (name: string) => {
