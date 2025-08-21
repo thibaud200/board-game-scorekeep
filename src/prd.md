@@ -1,16 +1,40 @@
-# Board Game Score Tracker - PRD v2.1 (État Actuel)
+# Board Game Score Tracker - PRD v2.2 (État Actuel)
 
-## 🎯 Vision & Mission
-- **Mission Statement**: Système de suivi de parties de jeux de société modulaire et réactif, permettant la gestion complète des sessions de jeu avec support multi-modes, gestion avancée des personnages, et validation robuste des données.
-- **État Actuel**: Application complètement fonctionnelle avec interface moderne, base de données SQLite, architecture modulaire React, et système de validation complet.
-- **Qualités d'expérience**: Adaptatif, Intuitif, Complet, Robuste
+## 🎯 Vision & Missi### 📊 Système de Templates de Jeux
+- **Implémenté**: Gestion complète des modèles de jeux avec validation et intégration BGG
+- **Fonctionnalités**:
+  - Création/édition de templates avec validation obligatoire du nom
+  - **Intégration BGG** : Auto-import intelligent avec recherche en temps réel
+  - **Analyse des modes** : Détection automatique coopératif/compétitif selon les mécaniques BGG
+  - Support multi-modes (coopératif + compétitif + campagne combinables)
+  - Gestion des extensions par template (optionnelles, auto-extraites de BGG)
+  - **Personnages intelligents** : Extraction automatique depuis les descriptions BGG
+  - Statistiques par type de jeu avec calcul correct
+  - Interface avec icônes cohérentes pour tous les badges
+  - Reset automatique des formulaires entre les ouvertures de dialog
+- **État**: ✅ Complet avec interface moderne, validation robuste, et intégration BGG intelligentession Statement**: Système de suivi de parties de jeux de société modulaire et réactif, permettant la gestion complète des sessions de jeu avec support multi-modes, intégration BoardGameGeek pour l'auto-import intelligent, gestion avancée des personnages, et validation robuste des données.
+- **État Actuel**: Application complètement fonctionnelle avec interface moderne, base de données SQLite, architecture modulaire React, intégration BGG avec analyse intelligente, et système de validation complet.
+- **Qualités d'expérience**: Adaptatif, Intuitif, Complet, Robuste, Intelligent
 
 ## 📊 Classification du Projet
-- **Niveau de complexité**: Application Avancée (gestion d'état complexe, base de données, multi-modes, validation)
-- **Architecture**: React 19 + TypeScript + Tailwind CSS + SQLite + Express Server + Radix UI
-- **Activité principale**: Gestion complète des sessions de jeu avec validation et statistiques avancées
+- **Niveau de complexité**: Application Avancée (gestion d'état complexe, base de données, multi-modes, intégration API externe, validation)
+- **Architecture**: React 19 + TypeScript + Tailwind CSS + SQLite + Express Server + Radix UI + BoardGameGeek XML API
+- **Activité principale**: Gestion complète des sessions de jeu avec validation, intégration BGG intelligente, et statistiques avancées
 
 ## ✅ Fonctionnalités Implémentées
+
+### 🔍 Intégration BoardGameGeek (BGG)
+- **Implémenté**: Auto-import intelligent de données de jeux depuis BoardGameGeek
+- **Fonctionnalités**:
+  - Recherche en temps réel avec auto-complétion debounced (500ms)
+  - Service BGG avec proxy Express pour contourner CORS
+  - Analyse intelligente des modes de jeu basée sur les mécaniques BGG
+  - Import automatique des métadonnées (année, joueurs, durée, description)
+  - Extraction automatique des personnages et extensions depuis la description
+  - Interface utilisateur intuitive avec prévisualisation des données
+  - Gestion des erreurs et timeout avec retry automatique
+- **Composants**: `BGGGameSearch.tsx`, `BGGService.ts`, routes proxy dans `server.js`
+- **État**: ✅ Complet - Auto-import fonctionnel avec analyse intelligente des modes
 
 ### 🏠 Système de Dashboard Modulaire
 - **Implémenté**: Dashboard central avec cartes interactives pour chaque fonction majeure
@@ -98,6 +122,7 @@ src/
 ├── components/
 │   ├── Dashboard.tsx           # Tableau de bord principal
 │   ├── DatabaseManager.tsx    # Gestion de la base de données
+│   ├── BGGGameSearch.tsx       # 🔍 Recherche BGG avec auto-complétion
 │   ├── game/                   # 🎮 Domaine des jeux
 │   │   ├── ActiveGame.tsx      # Jeu en cours avec validation
 │   │   ├── GameSetup.tsx       # Configuration avec validation
@@ -105,7 +130,7 @@ src/
 │   │   ├── GamesPlayedSection.tsx # Section parties jouées
 │   │   ├── GameTemplates.tsx   # Templates de jeux
 │   │   ├── GameTypeDetail.tsx  # Détail par type de jeu
-│   │   └── GameTemplateSection.tsx # Gestion templates
+│   │   └── GameTemplateSection.tsx # Gestion templates avec BGG
 │   ├── player/                 # 👥 Domaine des joueurs
 │   │   ├── PlayerManager.tsx   # Gestion des joueurs
 │   │   ├── PlayerStats.tsx     # Statistiques joueurs
@@ -127,6 +152,8 @@ src/
 │   ├── server-database.ts     # Interface serveur avec mapping correct
 │   ├── database.ts            # Types et interfaces de base
 │   └── utils.ts               # Utilitaires (formatage, validation)
+├── services/
+│   └── BGGService.ts          # 🔍 Service BoardGameGeek XML API
 └── hooks/
     └── use-mobile.ts          # Hook de détection mobile responsive
 ```
@@ -134,6 +161,7 @@ src/
 ### Stack Technologique
 - **Frontend**: React 19 + TypeScript + Tailwind CSS + Radix UI
 - **Backend**: Express.js + better-sqlite3 + CORS
+- **API Externe**: BoardGameGeek XML API v2 (avec proxy Express)
 - **Validation**: Native HTML5 + TypeScript + Custom hooks
 - **Icons**: Phosphor Icons React
 - **Build**: Vite + TypeScript strict mode

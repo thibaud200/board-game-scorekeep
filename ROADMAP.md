@@ -6,124 +6,49 @@
 - [x] Dashboard modulaire et responsive
 - [x] Gestion multi-modes (coopératif/compétitif/campagne)
 - [x] Système de templates de jeux configurables
-- [x] Ge### Phase 6: 🌐 Intégration API BoardGameGeek
-**S### Phase 4: 🏆 Système de Score Comp### Phase 5: 🏕️ Mode Campagne (Multi-Scénarios)titifatut**: 🔄 Planifié
-**Priorité**: Moyenne
-
-#### 🎯 Objectifs:
-- **Import automatique** via "Add Game Template" → Game Name
-- **Auto-suggestion** de jeux pendant la saisie
-- **Import personnages** et extensions depuis BGG
-- **Métadonnées enrichies** (images, descriptions, mécaniques)
-
-#### 🔧 API BoardGameGeek (XML officielle):
-```javascript
-// Recherche par nom
-https://boardgamegeek.com/xmlapi2/search?query=${gameName}&type=boardgame
-
-// Détails complets d'un jeu
-https://boardgamegeek.com/xmlapi2/thing?id=${gameId}&stats=1
-```
-
-#### 📦 Fonctionnalités d'Import:
-- **Recherche temps réel** dans le champ "Game Name"
-- **Sélection assistée** avec preview des données BGG
-- **Import automatique** :
-  - Personnages (depuis boardgamehonor, boardgamefamily)
-  - Extensions (depuis expansions)
-  - Métadonnées (min/max joueurs, durée, âge, mécaniques)
-  - Images et descriptions
-
-#### 🏗️ Architecture Technique:
-```typescript
-// Service API BGG
-interface BGGGameData {
-  id: number
-  name: string
-  description: string
-  image: string
-  minPlayers: number
-  maxPlayers: number
-  playingTime: number
-  minAge: number
-  categories: string[]
-  mechanics: string[]
-  expansions: BGGExpansion[]
-  characters: BGGCharacter[]
-}
-
-// Integration dans GameTemplate
-interface GameTemplate {
-  // Nouveau
-  bggId?: number
-  bggData?: BGGGameData
-  importedFrom?: 'manual' | 'bgg'
-  lastBGGSync?: string
-}
-```
-
-#### 📂 Fichiers à créer/modifier:
-- [ ] `src/services/BGGService.ts` - Service API BoardGameGeek
-- [ ] `src/components/BGGGameSearch.tsx` - Composant recherche/sélection
-- [ ] `src/components/sections/GameTemplateSection.tsx` - Intégration import
-- [ ] `src/lib/xml-parser.ts` - Parser XML vers TypeScript
-- [ ] `server.js` - Proxy API pour éviter CORS
-
-#### ⚡ Points d'Intégration:
-- **"Add Game Template"** → Champ "Game Name" avec auto-suggestion BGG
-- **Import One-Click** → Bouton "Import from BGG" dans le formulaire
-- **Sync périodique** → Mise à jour des données existantes
-
-#### 🔒 Gestion Technique:
-- **Parser XML** → Conversion en JSON/TypeScript
-- **Rate Limiting** → Délai entre requêtes pour éviter 503
-- **Cache local** → Stockage temporaire des résultats de recherche
-- **Fallback** → Mode manuel si API indisponible
-
-#### Prérequis:
-- ✅ Phase 2.5 (Refonte DB) **OBLIGATOIRE**
-- ✅ Phase 3 (Backup/Import) recommandé
-- Parser XML (xml2js ou DOMParser)
-- Proxy server pour CORSrsonnages avec historique
+- [x] Gestion personnages avec historique
 - [x] Statistiques complètes et historique des parties
 - [x] Base de données SQLite avec migrations
 - [x] Interface sans numérotation des personnages
 - [x] Correction du système victoire/défaite
 - [x] Architecture TypeScript propre (0 erreur)
 - [x] Nettoyage du code et suppression des fichiers redondants
-
+- [x] **Intégration BoardGameGeek** avec auto-import intelligent
+- [x] **Recherche BGG** en temps réel avec auto-complétion
+- [x] **Analyse intelligente** des modes de jeu basée sur les mécaniques
+- [x] **Import automatique** personnages/extensions depuis descriptions BGG
 ## 🎯 Prochaines Fonctionnalités Planifiées
 
-### Phase 1: 🏆 Amélioration du Mode Compétitif
-**Statut**: 🔄 Planifié
+### Phase 1: 🌐 Amélioration Intégration BGG
+**Statut**: 🔄 En cours (90% complet)
+**Priorité**: Moyenne
+
+#### � Améliorations Restantes:
+- [ ] **Images BGG** : Affichage des images de jeux importées
+- [ ] **Cache local** : Stockage des résultats de recherche BGG
+- [ ] **Sync périodique** : Mise à jour automatique des données BGG
+- [ ] **Amélioration UI** : Popup de suggestions qui ne se coupe plus dans les dialogs
+
+#### ✅ Déjà Implémenté:
+- [x] Service BGGService.ts avec XML parsing
+- [x] Composant BGGGameSearch avec auto-complétion
+- [x] Proxy Express pour contourner CORS
+- [x] Analyse intelligente des modes basée sur mécaniques
+- [x] Import automatique personnages/extensions
+- [x] Intégration complète dans GameTemplateSection
+
+### Phase 2: 🏆 Amélioration du Mode Compétitif
+**Statut**: ✅ Complet
 **Priorité**: Haute
 
-#### Objectifs:
-- Système de points de victoire personnalisable
-- Conditions de victoire flexibles par template
-- Calcul automatique des gagnants selon les règles
-- Gestion des égalités et cas particuliers
+#### ✅ Fonctionnalités Implémentées:
+- [x] Système de scoring en temps réel
+- [x] Calcul automatique des classements
+- [x] Validation des scores négatifs/positifs
+- [x] Interface utilisateur optimisée pour la saisie rapide
+- [x] Sauvegarde automatique des modifications
 
-#### Modifications techniques:
-```typescript
-interface GameTemplate {
-  // Nouveau pour compétitif
-  victoryCondition?: 'highest' | 'lowest' | 'threshold' | 'custom'
-  scoreThreshold?: number
-  customVictoryRules?: string
-  pointsSystem?: 'simple' | 'weighted' | 'categorical'
-}
-```
-
-#### Fichiers à modifier:
-- [ ] `src/App.tsx` - Étendre interface GameTemplate
-- [ ] `src/components/GameSetup.tsx` - Configuration des règles
-- [ ] `src/components/ActiveGame.tsx` - Calcul des gagnants
-- [ ] `src/components/sections/GameTemplateSection.tsx` - Interface de config
-- [ ] `server.js` - Endpoints pour nouvelles propriétés
-- [ ] Migration DB - Nouveaux champs pour conditions de victoire
-
-### Phase 2: 🎭 Gestion des Personnages par Jeu
+### Phase 3: 🎭 Gestion des Personnages par Jeu
 **Statut**: 🔄 Planifié
 **Priorité**: Haute
 

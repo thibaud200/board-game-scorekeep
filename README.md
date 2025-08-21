@@ -14,7 +14,8 @@ Board Game Score Tracker est une application web moderne et intuitive pour gére
 ### ✨ Fonctionnalités principales
 
 - 🎮 **Multi-modes de jeu** : Support coopératif, compétitif et campagne
-- 👥 **Gestion des personnages** : Suivi des personnages avec historique complet
+- � **Intégration BoardGameGeek** : Auto-import intelligent de données de jeux avec analyse de modes
+- �👥 **Gestion des personnages** : Suivi des personnages avec historique complet
 - 📊 **Statistiques avancées** : Analytics détaillées par joueur et par jeu
 - 🛡️ **Validation robuste** : Prévention proactive des erreurs de saisie
 - 📱 **Design responsive** : Interface adaptative mobile-first
@@ -62,6 +63,7 @@ L'application est prête ! 🎉
 | **Styling** | Tailwind CSS + Radix UI | 3.4 |
 | **Backend** | Express.js | 4.x |
 | **Base de données** | SQLite + better-sqlite3 | 3.x |
+| **API externe** | BoardGameGeek XML API | 2.0 |
 | **Build** | Vite | 6.x |
 | **Icons** | Phosphor Icons React | 2.x |
 
@@ -70,6 +72,7 @@ L'application est prête ! 🎉
 ```
 src/
 ├── components/
+│   ├── BGGGameSearch.tsx       # 🔍 Recherche BGG avec auto-complétion
 │   ├── game/                   # 🎮 Gestion des jeux
 │   │   ├── ActiveGame.tsx      # Partie en cours
 │   │   ├── GameSetup.tsx       # Configuration
@@ -82,6 +85,8 @@ src/
 │   ├── database-context.tsx    # Context React
 │   ├── database-hooks.ts       # Hooks personnalisés
 │   └── server-database.ts      # API serveur
+├── services/
+│   └── BGGService.ts           # 🔍 Service BoardGameGeek API
 └── hooks/
     └── use-mobile.ts           # Responsive hooks
 ```
@@ -94,9 +99,17 @@ src/
 2. Cliquez sur **Add Template**
 3. Configurez :
    - ✅ **Nom du jeu** (obligatoire)
+   - 🔍 **Import BGG** : Recherchez et importez automatiquement depuis BoardGameGeek
    - 🎭 **Personnages** (optionnel)
    - 📦 **Extensions** (optionnel)
-   - 🎯 **Modes supportés** (au moins un requis)
+   - 🎯 **Modes supportés** (détection intelligente depuis BGG)
+
+#### 🔍 Fonctionnalité BoardGameGeek
+
+- **Recherche intelligente** : Auto-complétion en temps réel
+- **Import automatique** : Récupération des données complètes (année, nombre de joueurs, durée)
+- **Analyse des modes** : Détection automatique coopératif/compétitif selon les mécaniques
+- **Données enrichies** : Personnages et extensions extraits de la description
 
 ### 2. Gérer les joueurs
 

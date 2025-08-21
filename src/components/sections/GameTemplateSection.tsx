@@ -49,21 +49,32 @@ interface DialogFormProps {
   formResetKey: number // Ajouter le compteur de reset
 }
 
+/**
+ * Composant de formulaire pour création/édition de templates de jeux
+ * 
+ * Fonctionnalités :
+ * - Intégration BGG avec auto-import intelligent
+ * - Validation des champs obligatoires
+ * - Analyse automatique des modes de jeu
+ * - Gestion des personnages et extensions
+ * - Reset automatique du formulaire
+ */
 function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemplate, formResetKey }: DialogFormProps) {
   return (
     <div className="space-y-4">
+      {/* === SECTION GAME NAME AVEC BGG INTEGRATION === */}
       <div>
         <label className="text-sm font-medium flex items-center gap-1">
           Game Name
           <Asterisk size={8} className="text-destructive" />
         </label>
         <BGGGameSearch
-          key={`bgg-search-${formResetKey}`} // Force re-render avec compteur
+          key={`bgg-search-${formResetKey}`} // Force re-render avec compteur pour reset
           onGameNameChange={(name) => setFormData(prev => ({ ...prev, name }))}
           onGameImport={(gameData) => {
             console.log('Import BGG Game Data:', gameData) // Debug log
             
-            // Analyse intelligente des données BGG
+            // === ANALYSE INTELLIGENTE DES DONNÉES BGG ===
             const hasCharacters = gameData.characters.length > 0
             const hasExtensions = gameData.expansions.length > 0
             
@@ -72,48 +83,55 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
             const mechanics = gameData.mechanics || []
             const description = gameData.description.toLowerCase()
             
-            // Logique de détermination des modes supportés
+            // === LOGIQUE DE DÉTERMINATION DES MODES SUPPORTÉS ===
+            
+            // Mode Coopératif : détection via catégories, mécaniques et description
             const supportsCooperative = 
               categories.some(cat => cat.toLowerCase().includes('cooperative')) ||
               mechanics.some(mech => mech.toLowerCase().includes('cooperative')) ||
               description.includes('cooperative') ||
               description.includes('co-op')
             
+            // Mode Compétitif : par défaut si multi-joueurs et pas "cooperative only"
             const supportsCompetitive = 
               !categories.some(cat => cat.toLowerCase().includes('cooperative only')) &&
               gameData.maxPlayers > 1
             
+            // Mode Campagne : détection via mots-clés spécifiques
             const supportsCampaign = 
               categories.some(cat => cat.toLowerCase().includes('campaign')) ||
               mechanics.some(mech => mech.toLowerCase().includes('campaign')) ||
               description.includes('campaign') ||
               description.includes('scenario')
             
-            // Détermination du mode par défaut (logique améliorée)
+            // === DÉTERMINATION DU MODE PAR DÉFAUT (LOGIQUE HIÉRARCHIQUE) ===
             let defaultMode: 'cooperative' | 'competitive' | 'campaign' = 'competitive'
             if (supportsCampaign) {
+              // Priorité 1 : Campagne (jeux narratifs)
               defaultMode = 'campaign'
             } else if (supportsCooperative) {
-              // Si le jeu supporte le coopératif, privilégier ce mode
-              // sauf si c'est un jeu principalement compétitif
+              // Priorité 2 : Coopératif vs Compétitif selon dominance
               const isMainlyCooperative = 
                 categories.some(cat => cat.toLowerCase().includes('cooperative')) ||
                 mechanics.some(mech => mech.toLowerCase().includes('cooperative'))
               defaultMode = isMainlyCooperative ? 'cooperative' : 'competitive'
             }
             
-            // Nettoyage et filtrage des personnages
+            // === NETTOYAGE ET FILTRAGE DES DONNÉES ===
+            
+            // Personnages : filtrage intelligent pour éliminer le bruit
             const cleanedCharacters = gameData.characters
               .filter(char => char && char.length > 2) // Éliminer les entrées trop courtes
               .filter(char => !char.toLowerCase().includes('expansion')) // Éliminer les références aux extensions
-              .slice(0, 20) // Limiter à 20 personnages max
+              .slice(0, 20) // Limiter à 20 personnages max pour l'UI
             
-            // Nettoyage des extensions (exclure les réimpressions et variantes)
+            // Extensions : exclure les réimpressions et variantes mineures
             const cleanedExtensions = gameData.expansions
               .filter(exp => exp.name && !exp.name.toLowerCase().includes('reprint'))
               .filter(exp => !exp.name.toLowerCase().includes('edition'))
-              .slice(0, 10) // Limiter à 10 extensions max
+              .slice(0, 10) // Limiter à 10 extensions max pour l'UI
             
+            // === MISE À JOUR DU FORMULAIRE ===
             setFormData(prev => ({
               ...prev,
               name: gameData.name,
@@ -127,11 +145,13 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
               defaultMode
             }))
             
+            // Log pour debugging et monitoring de l'analyse intelligente
             console.log('Auto-detected game modes:', {
               supportsCooperative,
               supportsCompetitive,
               supportsCampaign,
-              defaultMode
+              defaultMode,
+              basedOn: { categories, mechanics, hasKeywords: description.includes('cooperative') }
             })
           }}
           disabled={false}
@@ -141,6 +161,7 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
         )}
       </div>
 
+      {/* === SECTION PERSONNAGES === */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium">Has Characters/Roles</label>
@@ -164,6 +185,7 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
           </div>
         )}
 
+        {/* === SECTION EXTENSIONS === */}
         <div className="flex items-center justify-between">
           <label className="text-sm font-medium">Has Extensions</label>
           <Switch
@@ -186,6 +208,7 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
           </div>
         )}
 
+        {/* === SECTION MODES DE JEU (OBLIGATOIRE) === */}
         <div className="space-y-3">
           <label className="text-sm font-medium flex items-center gap-1">
             Game Modes (select all that apply)
