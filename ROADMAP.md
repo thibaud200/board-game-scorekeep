@@ -6,7 +6,85 @@
 - [x] Dashboard modulaire et responsive
 - [x] Gestion multi-modes (coopératif/compétitif/campagne)
 - [x] Système de templates de jeux configurables
-- [x] Gestion avancée des personnages avec historique
+- [x] Ge### Phase 6: 🌐 Intégration API BoardGameGeek
+**S### Phase 4: 🏆 Système de Score Comp### Phase 5: 🏕️ Mode Campagne (Multi-Scénarios)titifatut**: 🔄 Planifié
+**Priorité**: Moyenne
+
+#### 🎯 Objectifs:
+- **Import automatique** via "Add Game Template" → Game Name
+- **Auto-suggestion** de jeux pendant la saisie
+- **Import personnages** et extensions depuis BGG
+- **Métadonnées enrichies** (images, descriptions, mécaniques)
+
+#### 🔧 API BoardGameGeek (XML officielle):
+```javascript
+// Recherche par nom
+https://boardgamegeek.com/xmlapi2/search?query=${gameName}&type=boardgame
+
+// Détails complets d'un jeu
+https://boardgamegeek.com/xmlapi2/thing?id=${gameId}&stats=1
+```
+
+#### 📦 Fonctionnalités d'Import:
+- **Recherche temps réel** dans le champ "Game Name"
+- **Sélection assistée** avec preview des données BGG
+- **Import automatique** :
+  - Personnages (depuis boardgamehonor, boardgamefamily)
+  - Extensions (depuis expansions)
+  - Métadonnées (min/max joueurs, durée, âge, mécaniques)
+  - Images et descriptions
+
+#### 🏗️ Architecture Technique:
+```typescript
+// Service API BGG
+interface BGGGameData {
+  id: number
+  name: string
+  description: string
+  image: string
+  minPlayers: number
+  maxPlayers: number
+  playingTime: number
+  minAge: number
+  categories: string[]
+  mechanics: string[]
+  expansions: BGGExpansion[]
+  characters: BGGCharacter[]
+}
+
+// Integration dans GameTemplate
+interface GameTemplate {
+  // Nouveau
+  bggId?: number
+  bggData?: BGGGameData
+  importedFrom?: 'manual' | 'bgg'
+  lastBGGSync?: string
+}
+```
+
+#### 📂 Fichiers à créer/modifier:
+- [ ] `src/services/BGGService.ts` - Service API BoardGameGeek
+- [ ] `src/components/BGGGameSearch.tsx` - Composant recherche/sélection
+- [ ] `src/components/sections/GameTemplateSection.tsx` - Intégration import
+- [ ] `src/lib/xml-parser.ts` - Parser XML vers TypeScript
+- [ ] `server.js` - Proxy API pour éviter CORS
+
+#### ⚡ Points d'Intégration:
+- **"Add Game Template"** → Champ "Game Name" avec auto-suggestion BGG
+- **Import One-Click** → Bouton "Import from BGG" dans le formulaire
+- **Sync périodique** → Mise à jour des données existantes
+
+#### 🔒 Gestion Technique:
+- **Parser XML** → Conversion en JSON/TypeScript
+- **Rate Limiting** → Délai entre requêtes pour éviter 503
+- **Cache local** → Stockage temporaire des résultats de recherche
+- **Fallback** → Mode manuel si API indisponible
+
+#### Prérequis:
+- ✅ Phase 2.5 (Refonte DB) **OBLIGATOIRE**
+- ✅ Phase 3 (Backup/Import) recommandé
+- Parser XML (xml2js ou DOMParser)
+- Proxy server pour CORSrsonnages avec historique
 - [x] Statistiques complètes et historique des parties
 - [x] Base de données SQLite avec migrations
 - [x] Interface sans numérotation des personnages
@@ -140,6 +218,110 @@ CREATE TABLE game_extensions (
 - [ ] Validation des contraintes d'extensions
 - [ ] Tests de compatibilité ascendante
 
+### Phase 3: 💾 Backup & Import de Base de Données
+**Statut**: 🔄 Planifié
+**Priorité**: Moyenne (Utilitaire)
+
+#### 🎯 Objectifs:
+- **Export complet** de la base de données (JSON/SQL)
+- **Import/Restauration** depuis fichier de sauvegarde
+- **Migration automatique** entre versions de schéma
+- **Interface graphique** pour backup/restore
+
+#### 📦 Fonctionnalités de Backup:
+```typescript
+interface DatabaseBackup {
+  version: string
+  timestamp: string
+  metadata: {
+    totalPlayers: number
+    totalGames: number
+    totalSessions: number
+  }
+  data: {
+    players: Player[]
+    gameTemplates: GameTemplate[]
+    gameSessions: GameSession[]
+  }
+}
+```
+
+#### 🛠️ Interface Utilisateur:
+- **Bouton "Export Database"** → Télécharge backup.json
+- **Bouton "Import Database"** → Upload + validation + restauration
+- **Preview avant import** → Affichage des données à importer
+- **Options avancées** → Export partiel (par jeu, par période)
+
+#### 📂 Localisation:
+- **Database Management Dialog** (déjà prévu en popup)
+- **Section "Backup & Restore"** dans le dialog
+- **Logs d'opération** pour traçabilité
+
+#### 🔧 Implémentation Technique:
+- [ ] `src/services/BackupService.ts` - Service export/import
+- [ ] `src/components/DatabaseBackup.tsx` - Interface utilisateur
+- [ ] `server.js` - Endpoints `/backup` et `/restore`
+- [ ] Validation de schéma lors de l'import
+- [ ] Migration automatique des anciennes versions
+
+#### ⚠️ Gestion des Conflits:
+- **Stratégies de merge** : Écraser, Fusionner, Ignorer
+- **Validation des IDs** : Éviter les doublons
+- **Rollback automatique** en cas d'erreur d'import
+
+### Phase 2.8: 💾 Gestion Avancée de Base de Données
+**Statut**: 🔄 Planifié
+**Priorité**: Moyenne (UX et Admin)
+
+#### Objectifs:
+- **Export/Backup** : Sauvegarde complète de la base de données
+- **Import/Restore** : Restauration depuis un fichier de sauvegarde
+- **Nettoyage** : Suppression de données obsolètes ou corrompues
+- **Validation** : Vérification de l'intégrité des données
+
+#### Fonctionnalités à Implémenter:
+```typescript
+interface DatabaseBackup {
+  version: string
+  timestamp: string
+  players: Player[]
+  gameTemplates: GameTemplate[]
+  gameSessions: GameSession[]
+  metadata: {
+    totalGames: number
+    exportedBy: string
+    checksum: string
+  }
+}
+```
+
+#### Interface Utilisateur:
+- **Dialog Database Management** (déjà implémenté)
+- Boutons "Export Database" et "Import Database" 
+- Barre de progression pour les opérations longues
+- Validation avant import avec aperçu des données
+- Gestion des conflits (données existantes vs importées)
+
+#### Fonctionnalités Techniques:
+- **Export JSON** : Format standardisé et lisible
+- **Validation Schema** : Vérification des données avant import
+- **Backup automatique** : Avant chaque import majeur
+- **Rollback** : Annulation possible après import
+- **Logging** : Historique des opérations d'import/export
+
+#### Fichiers à créer/modifier:
+- [ ] `src/lib/database-backup.ts` - Service de backup/restore
+- [ ] `src/components/DatabaseManager.tsx` - Nouvelles fonctionnalités UI
+- [ ] `server.js` - Endpoints pour export/import
+- [ ] `src/lib/database-validation.ts` - Validation des données
+- [ ] Tests unitaires pour backup/restore
+
+#### Cas d'Usage:
+- 📱 **Migration d'appareil** : Transfert des données vers un nouveau device
+- 🔄 **Synchronisation** : Partage de données entre utilisateurs
+- 🛡️ **Sauvegarde préventive** : Avant mises à jour majeures
+- 🚀 **Déploiement** : Import de données de test ou de production
+
 ### Phase 3: � Système de Score Compétitif
 **Statut**: 🔄 Planifié
 **Priorité**: Moyenne
@@ -240,7 +422,7 @@ interface Scenario {
 - Cache local des données API
 - Gestion de la limitation de requêtes (rate limiting)
 
-### Phase 6: 🌍 Localisation et Internationalisation
+### Phase 7: 🌍 Localisation et Internationalisation
 **Statut**: 🔄 Planifié
 **Priorité**: Basse (Enhancement)
 
@@ -337,6 +519,14 @@ interface Scenario {
 - Prévoir les migrations de base de données
 - Conserver l'architecture modulaire actuelle
 - Tests unitaires pour chaque nouvelle fonctionnalité
+
+## 🐛 Améliorations UX Mineures
+
+### Issues Connues à Corriger
+- **BGG Search Popup Clipping** : La fenêtre de suggestions BGG peut être coupée dans les Dialogs
+  - **Cause** : Overflow des DialogContent + z-index conflicts
+  - **Solutions** : Portal, Popover Radix UI, ou positionnement dynamique
+  - **Priorité** : Basse (amélioration cosmétique)
 
 ### Points d'Attention
 - Performance avec des bases de données de personnages importantes

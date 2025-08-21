@@ -12,6 +12,7 @@ import { GameTemplate, GameSession } from '@/App'
 import { useDatabase } from '@/lib/database-context'
 import { useGameHistory } from '@/lib/database-hooks'
 import { toast } from 'sonner'
+import { BGGGameSearch } from '@/components/BGGGameSearch'
 
 interface GameTemplateSectionProps {
   gameTemplates: GameTemplate[]
@@ -45,9 +46,10 @@ interface DialogFormProps {
   saveTemplate: () => void
   onCancel: () => void
   editingTemplate: GameTemplate | null
+  formResetKey: number // Ajouter le compteur de reset
 }
 
-function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemplate }: DialogFormProps) {
+function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemplate, formResetKey }: DialogFormProps) {
   return (
     <div className="space-y-4">
       <div>
@@ -55,11 +57,84 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
           Game Name
           <Asterisk size={8} className="text-destructive" />
         </label>
-        <Input
-          placeholder="Enter game name"
-          value={formData.name}
-          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-          className={!formData.name.trim() ? "border-destructive" : ""}
+        <BGGGameSearch
+          key={`bgg-search-${formResetKey}`} // Force re-render avec compteur
+          onGameNameChange={(name) => setFormData(prev => ({ ...prev, name }))}
+          onGameImport={(gameData) => {
+            console.log('Import BGG Game Data:', gameData) // Debug log
+            
+            // Analyse intelligente des données BGG
+            const hasCharacters = gameData.characters.length > 0
+            const hasExtensions = gameData.expansions.length > 0
+            
+            // Analyse du type de jeu pour déterminer les modes supportés
+            const categories = gameData.categories || []
+            const mechanics = gameData.mechanics || []
+            const description = gameData.description.toLowerCase()
+            
+            // Logique de détermination des modes supportés
+            const supportsCooperative = 
+              categories.some(cat => cat.toLowerCase().includes('cooperative')) ||
+              mechanics.some(mech => mech.toLowerCase().includes('cooperative')) ||
+              description.includes('cooperative') ||
+              description.includes('co-op')
+            
+            const supportsCompetitive = 
+              !categories.some(cat => cat.toLowerCase().includes('cooperative only')) &&
+              gameData.maxPlayers > 1
+            
+            const supportsCampaign = 
+              categories.some(cat => cat.toLowerCase().includes('campaign')) ||
+              mechanics.some(mech => mech.toLowerCase().includes('campaign')) ||
+              description.includes('campaign') ||
+              description.includes('scenario')
+            
+            // Détermination du mode par défaut (logique améliorée)
+            let defaultMode: 'cooperative' | 'competitive' | 'campaign' = 'competitive'
+            if (supportsCampaign) {
+              defaultMode = 'campaign'
+            } else if (supportsCooperative) {
+              // Si le jeu supporte le coopératif, privilégier ce mode
+              // sauf si c'est un jeu principalement compétitif
+              const isMainlyCooperative = 
+                categories.some(cat => cat.toLowerCase().includes('cooperative')) ||
+                mechanics.some(mech => mech.toLowerCase().includes('cooperative'))
+              defaultMode = isMainlyCooperative ? 'cooperative' : 'competitive'
+            }
+            
+            // Nettoyage et filtrage des personnages
+            const cleanedCharacters = gameData.characters
+              .filter(char => char && char.length > 2) // Éliminer les entrées trop courtes
+              .filter(char => !char.toLowerCase().includes('expansion')) // Éliminer les références aux extensions
+              .slice(0, 20) // Limiter à 20 personnages max
+            
+            // Nettoyage des extensions (exclure les réimpressions et variantes)
+            const cleanedExtensions = gameData.expansions
+              .filter(exp => exp.name && !exp.name.toLowerCase().includes('reprint'))
+              .filter(exp => !exp.name.toLowerCase().includes('edition'))
+              .slice(0, 10) // Limiter à 10 extensions max
+            
+            setFormData(prev => ({
+              ...prev,
+              name: gameData.name,
+              hasCharacters,
+              characters: cleanedCharacters.join(', '),
+              hasExtensions,
+              extensions: cleanedExtensions.map(exp => exp.name).join(', '),
+              supportsCooperative,
+              supportsCompetitive,
+              supportsCampaign,
+              defaultMode
+            }))
+            
+            console.log('Auto-detected game modes:', {
+              supportsCooperative,
+              supportsCompetitive,
+              supportsCampaign,
+              defaultMode
+            })
+          }}
+          disabled={false}
         />
         {!formData.name.trim() && (
           <p className="text-xs text-destructive mt-1">Game name is required</p>
@@ -217,6 +292,7 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<GameTemplate | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<GameTemplate | null>(null)
+  const [formResetKey, setFormResetKey] = useState(0) // Compteur pour forcer le re-render
   
   // Form state
   const [formData, setFormData] = useState({
@@ -243,6 +319,7 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       supportsCampaign: false,
       defaultMode: 'competitive' as 'cooperative' | 'competitive' | 'campaign'
     })
+    setFormResetKey(prev => prev + 1) // Incrémenter pour forcer le re-render du BGGGameSearch
   }
 
   const openEditDialog = (template: GameTemplate) => {
@@ -372,14 +449,20 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
             <h1 className="text-2xl md:text-3xl font-bold text-foreground">Game Templates</h1>
             <p className="text-muted-foreground text-sm md:text-base">Manage your game configurations</p>
           </div>
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <Dialog open={showAddDialog} onOpenChange={(open) => {
+            setShowAddDialog(open)
+            if (open && !editingTemplate) {
+              // Réinitialiser le formulaire à chaque ouverture pour création
+              resetForm()
+            }
+          }}>
             <DialogTrigger asChild>
               <Button className="self-start sm:self-auto">
                 <Plus size={16} className="mr-2" />
                 Add Template
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+            <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto overflow-x-visible">
               <DialogHeader>
                 <DialogTitle>Add Game Template</DialogTitle>
                 <DialogDescription>
@@ -392,6 +475,7 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
                 saveTemplate={saveTemplate}
                 onCancel={handleCancel}
                 editingTemplate={editingTemplate}
+                formResetKey={formResetKey}
               />
             </DialogContent>
           </Dialog>
@@ -586,6 +670,7 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
               saveTemplate={saveTemplate}
               onCancel={handleCancel}
               editingTemplate={editingTemplate}
+              formResetKey={formResetKey}
             />
           </DialogContent>
         </Dialog>

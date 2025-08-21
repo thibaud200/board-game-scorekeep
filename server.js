@@ -3,6 +3,7 @@ import Database from 'better-sqlite3'
 import cors from 'cors'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import fetch from 'node-fetch' // Pour les requêtes BGG
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -17,6 +18,44 @@ const db = new Database(dbPath)
 // Configuration CORS et middleware
 app.use(cors())
 app.use(express.json())
+
+// Proxy BGG API pour éviter les problèmes CORS
+app.get('/api/bgg/:endpoint', async (req, res) => {
+  try {
+    const bggPath = req.params.endpoint
+    const queryString = req.url.split('?')[1] || ''
+    const bggUrl = `https://boardgamegeek.com/xmlapi2/${bggPath}${queryString ? '?' + queryString : ''}`
+    
+    console.log('BGG Proxy Request:', bggUrl)
+    console.log('BGG Params:', req.params)
+    console.log('BGG Query:', queryString)
+    
+    const response = await fetch(bggUrl, {
+      headers: {
+        'User-Agent': 'BoardGameScoreTracker/1.0'
+      }
+    })
+    
+    if (!response.ok) {
+      console.log('BGG API Error:', response.status, response.statusText)
+      return res.status(response.status).json({ error: 'BGG API Error' })
+    }
+    
+    const xmlData = await response.text()
+    console.log('BGG Response (first 200 chars):', xmlData.substring(0, 200))
+    
+    // Retourner le XML avec le bon content-type
+    res.set('Content-Type', 'application/xml')
+    res.send(xmlData)
+    
+    // Rate limiting : petite pause pour éviter le spam
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+  } catch (error) {
+    console.error('BGG Proxy Error:', error)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
 
 // Créer les tables si elles n'existent pas
 db.exec(`

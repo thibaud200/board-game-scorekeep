@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trophy, Users, GameController, ArrowRight } from '@phosphor-icons/react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Plus, Trophy, Users, GameController, ArrowRight, Database } from '@phosphor-icons/react'
 import { Player, GameSession, GameTemplate } from '@/App'
 import { PlayerSection } from '@/components/sections/PlayerSection'
 import { GameTemplateSection } from '@/components/sections/GameTemplateSection'
@@ -19,6 +20,7 @@ interface DashboardProps {
 export function Dashboard({ players, gameTemplates, onStartGame }: DashboardProps) {
   const { gameHistory } = useGameHistory()
   const [activeSection, setActiveSection] = useState<'dashboard' | 'players' | 'templates' | 'games-played'>('dashboard')
+  const [databaseDialogOpen, setDatabaseDialogOpen] = useState(false)
 
   const completedGames = gameHistory.filter(game => game.completed)
   const recentGames = completedGames.slice(-3).reverse()
@@ -61,8 +63,31 @@ export function Dashboard({ players, gameTemplates, onStartGame }: DashboardProp
     <div className="container mx-auto px-4 py-4 md:py-8">
       {/* Header */}
       <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Board Game Tracker</h1>
-        <p className="text-muted-foreground text-sm md:text-base">Track scores, celebrate wins, and build your gaming legacy</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Board Game Tracker</h1>
+            <p className="text-muted-foreground text-sm md:text-base">Track scores, celebrate wins, and build your gaming legacy</p>
+          </div>
+          
+          {/* Database Management Button */}
+          <Dialog open={databaseDialogOpen} onOpenChange={setDatabaseDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Database size={16} />
+                Database
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Database size={20} />
+                  Database Management
+                </DialogTitle>
+              </DialogHeader>
+              <DatabaseManager />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Quick Start Section */}
@@ -177,11 +202,6 @@ export function Dashboard({ players, gameTemplates, onStartGame }: DashboardProp
             )}
           </CardContent>
         </Card>
-      </div>
-
-      {/* Database Management */}
-      <div className="mb-6">
-        <DatabaseManager />
       </div>
 
       {/* Recent Games */}
