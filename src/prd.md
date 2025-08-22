@@ -1,27 +1,35 @@
-# Board Game Score Tracker - PRD v2.2 (État Actuel)
+# Board Game Score Tracker - PRD v1.0.1 (État Actuel)
 
-## 🎯 Vision & Missi### 📊 Système de Templates de Jeux
-- **Implémenté**: Gestion complète des modèles de jeux avec validation et intégration BGG
-- **Fonctionnalités**:
-  - Création/édition de templates avec validation obligatoire du nom
-  - **Intégration BGG** : Auto-import intelligent avec recherche en temps réel
-  - **Analyse des modes** : Détection automatique coopératif/compétitif selon les mécaniques BGG
-  - Support multi-modes (coopératif + compétitif + campagne combinables)
-  - Gestion des extensions par template (optionnelles, auto-extraites de BGG)
-  - **Personnages intelligents** : Extraction automatique depuis les descriptions BGG
-  - Statistiques par type de jeu avec calcul correct
-  - Interface avec icônes cohérentes pour tous les badges
-  - Reset automatique des formulaires entre les ouvertures de dialog
-- **État**: ✅ Complet avec interface moderne, validation robuste, et intégration BGG intelligentession Statement**: Système de suivi de parties de jeux de société modulaire et réactif, permettant la gestion complète des sessions de jeu avec support multi-modes, intégration BoardGameGeek pour l'auto-import intelligent, gestion avancée des personnages, et validation robuste des données.
-- **État Actuel**: Application complètement fonctionnelle avec interface moderne, base de données SQLite, architecture modulaire React, intégration BGG avec analyse intelligente, et système de validation complet.
-- **Qualités d'expérience**: Adaptatif, Intuitif, Complet, Robuste, Intelligent
+## 🎯 Vision & Mission
+
+**Vision Statement**: Système de suivi de parties de jeux de société modulaire et réactif, permettant la gestion complète des sessions de jeu avec support multi-modes, intégration BoardGameGeek pour l'auto-import intelligent, gestion avancée des personnages, et validation robuste des données.
+
+**État Actuel**: Application complètement fonctionnelle avec interface moderne, base de données SQLite, architecture modulaire React, intégration BGG avec analyse intelligente, infrastructure de tests complète (52/52 tests ✅), et système de validation complet.
+
+**Qualités d'expérience**: Adaptatif, Intuitif, Complet, Robuste, Intelligent, Testé
 
 ## 📊 Classification du Projet
-- **Niveau de complexité**: Application Avancée (gestion d'état complexe, base de données, multi-modes, intégration API externe, validation)
-- **Architecture**: React 19 + TypeScript + Tailwind CSS + SQLite + Express Server + Radix UI + BoardGameGeek XML API
-- **Activité principale**: Gestion complète des sessions de jeu avec validation, intégration BGG intelligente, et statistiques avancées
+- **Version**: v1.0.1
+- **Niveau de complexité**: Application Avancée (gestion d'état complexe, base de données, multi-modes, intégration API externe, validation, tests complets)
+- **Architecture**: React 19 + TypeScript + Tailwind CSS + SQLite + Express 5 + Radix UI + BoardGameGeek XML API + Jest/RTL
+- **Activité principale**: Gestion complète des sessions de jeu avec validation, intégration BGG intelligente, infrastructure de tests robuste, et statistiques avancées
 
 ## ✅ Fonctionnalités Implémentées
+
+### 🧪 Infrastructure de Tests Complète (v1.0.1)
+- **Implémenté**: Infrastructure de tests robuste avec couverture complète
+- **Fonctionnalités**:
+  - **52/52 tests** passant systématiquement avec 100% de taux de réussite
+  - **Jest 30.0.5** + React Testing Library + TypeScript + ESM
+  - **Tests unitaires techniques** : BGGService, database-hooks, config (17/17 tests ✅)
+  - **Tests fonctionnels** : BGGGameSearch, GameTemplateSection (28/28 tests ✅)
+  - **Tests d'intégration** : BGG workflow end-to-end (7/7 tests ✅)
+  - **Mocks robustes** : BGG API, Database, window.matchMedia, lucide-react
+  - **Support multilingue** : Interface française validée dans les tests
+  - **Radix UI compatibility** : Tests compatibles avec data-state attributes
+  - **Architecture client-side** : Mock database avec opérations CRUD complètes
+- **Composants**: `tests/` avec structure organisée (unit, integration, fixtures, mocks)
+- **État**: ✅ Complet - Infrastructure de tests moderne et maintenable
 
 ### 🔍 Intégration BoardGameGeek (BGG)
 - **Implémenté**: Auto-import intelligent de données de jeux depuis BoardGameGeek
@@ -82,9 +90,19 @@
     - Toast notifications pour actions importantes
 - **État**: ✅ Complet - Prévention proactive des erreurs de saisie
 
-### �📊 Système de Templates de Jeux
-- **Implémenté**: Gestion complète des modèles de jeux avec validation
+### 📊 Système de Templates de Jeux
+- **Implémenté**: Gestion complète des modèles de jeux avec validation et intégration BGG
 - **Fonctionnalités**:
+  - Création/édition de templates avec validation obligatoire du nom
+  - **Intégration BGG** : Auto-import intelligent avec recherche en temps réel
+  - **Analyse des modes** : Détection automatique coopératif/compétitif selon les mécaniques BGG
+  - Support multi-modes (coopératif + compétitif + campagne combinables)
+  - Gestion des extensions par template (optionnelles, auto-extraites de BGG)
+  - **Personnages intelligents** : Extraction automatique depuis les descriptions BGG
+  - Statistiques par type de jeu avec calcul correct
+  - Interface avec icônes cohérentes pour tous les badges
+  - Reset automatique des formulaires entre les ouvertures de dialog
+- **État**: ✅ Complet avec interface moderne, validation robuste, et intégration BGG intelligente
   - Création/édition de templates avec validation obligatoire du nom
   - Support multi-modes (coopératif + compétitif + campagne combinables)
   - Gestion des extensions par template (optionnelles)
@@ -163,7 +181,7 @@ src/
 - **Backend**: Express.js + better-sqlite3 + CORS
 - **API Externe**: BoardGameGeek XML API v2 (avec proxy Express)
 - **Validation**: Native HTML5 + TypeScript + Custom hooks
-- **Icons**: Phosphor Icons React
+- **Icons**: Lucide React
 - **Build**: Vite + TypeScript strict mode
 - **Notifications**: Sonner (Toast system)
 
@@ -227,7 +245,7 @@ interface CharacterEvent {
   - `border-destructive` pour les champs invalides
   - `text-muted-foreground` pour les labels optionnels
 - **States**: Disabled, Loading, Success, Error avec feedback visuel
-- **Cohérence**: Icônes Phosphor uniformes dans tous les badges
+- **Cohérence**: Icônes Lucide uniformes dans tous les badges
 - **Scheme**: Système de couleurs sombre/clair adaptatif avec thème automatique
 - **Couleurs primaires**: Bleu profond pour la confiance et navigation
 - **Couleurs fonctionnelles**:
@@ -308,22 +326,22 @@ interface CharacterEvent {
 - ✅ Architecture modulaire et maintenable
 - ✅ Base de données intègre et migrée correctement
 
-## 🎯 Améliorations Récentes (v2.1)
+## 🎯 Améliorations Récentes (v1.0.1)
+- **Infrastructure de tests complète**: 52/52 tests ✅ avec Jest + RTL + TypeScript
+- **Intégration BGG**: Auto-import intelligent avec analyse des modes de jeu
 - **Validation complète**: Champs obligatoires/optionnels clairement indiqués
 - **Fix critique**: Résolution du bug de mapping gameTemplate
-- **Architecture**: Réorganisation par domaine fonctionnel
-- **UX/UI**: Icônes cohérentes et feedback visuel immédiat
+- **Architecture**: Réorganisation par domaine fonctionnel + tests robustes
+- **UX/UI**: Icônes Lucide cohérentes et feedback visuel immédiat
 - **Robustesse**: Prévention des données incomplètes ou invalides
-- **Documentation**: Commentaires ajoutés sur toutes les fonctions importantes
+- **Documentation**: Mise à jour complète avec état actuel du projet
 
 ## 🔮 Roadmap Future (Voir ROADMAP.md)
-- **Phase 1**: Système de points de victoire pour mode compétitif
-- **Phase 2**: Gestion des personnages par jeu avec sélection automatique
-- **Phase 3**: Mode campagne multi-scénarios
-- **Phase 4**: Intégration API externes (BoardGameGeek, etc.)
+- **v1.1**: Améliorations BGG (images, cache, sync périodique)
+- **v1.2**: Mode campagne multi-scénarios avec progression
+- **v1.3**: Système de victoire compétitif avancé
+- **v1.4**: Gestion des personnages par jeu avec sélection automatique
 
 ---
 
 **Note**: Cette application n'a volontairement PAS de gestion multi-utilisateurs car elle est conçue pour un usage local ou partage entre amis/joueurs du même groupe.
-- API pour intégrations tierces
-- Mode hors ligne avancé

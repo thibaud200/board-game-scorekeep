@@ -1,11 +1,12 @@
 {
-    "name": "spark-template",
+    "name": "board-game-scorekeep",
     "private": true,
-    "version": "0.0.0",
+    "version": "1.0.1",
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "kill": "fuser -k 5000/tcp",
+        "server": "node server.js",
+        "start": "concurrently \"npm run server\" \"npm run dev\"",
         "build": "tsc -b --noCheck && vite build",
         "lint": "eslint .",
         "optimize": "vite optimize",
@@ -92,6 +93,7 @@
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react": "^5.0.1",
         "@vitejs/plugin-react-swc": "^3.10.1",
+        "concurrently": "^8.2.2",
         "eslint": "^9.28.0",
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-refresh": "^0.4.19",

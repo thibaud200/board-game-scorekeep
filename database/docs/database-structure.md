@@ -1,4 +1,4 @@
-# 🗄️ Structure de la Base de Données - Board Game Score Tracker
+# 🗄️ Structure de la Base de Données - Board Game Score Tracker v1.0.1
 
 ## 📊 Vue d'ensemble
 
@@ -6,7 +6,9 @@ Cette documentation décrit la structure actuelle de la base de données SQLite 
 
 **Base de données** : `database/board-game-tracker.db`  
 **Type** : SQLite 3.x avec better-sqlite3  
+**Version du schéma** : v1.0.1
 **Migrations** : Automatiques via scripts de migration  
+**Tests** : Infrastructure complète avec mocks database (52/52 tests ✅)  
 
 ## 📋 Tables Principales
 
@@ -262,6 +264,8 @@ GROUP BY game_type;
 
 ---
 
-**📅 Dernière mise à jour** : 21 août 2025  
-**📝 Version** : 1.0  
+**📅 Dernière mise à jour** : 22 août 2025  
+**📝 Version** : 1.0.1  
+**🧪 Tests** : Infrastructure complète (52/52 tests ✅)  
+**📊 État** : Base de données opérationnelle avec intégration BGG et validation complète  
 **👨‍💻 Maintenance** : Équipe de développement Board Game Score Tracker

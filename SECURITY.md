@@ -1,31 +1,60 @@
-Thanks for helping make GitHub safe for everyone.
+# Security Policy
 
-# Security
+## Supported Versions
 
-GitHub takes the security of our software products and services seriously, including all of the open source code repositories managed through our GitHub organizations, such as [GitHub](https://github.com/GitHub).
+We actively support the following versions of Board Game Score Tracker with security updates:
 
-Even though [open source repositories are outside of the scope of our bug bounty program](https://bounty.github.com/index.html#scope) and therefore not eligible for bounty rewards, we will ensure that your finding gets passed along to the appropriate maintainers for remediation. 
+| Version | Supported          |
+| ------- | ------------------ |
+| 1.0.x   | :white_check_mark: |
+| < 1.0   | :x:                |
 
-## Reporting Security Issues
+## Reporting a Vulnerability
 
-If you believe you have found a security vulnerability in any GitHub-owned repository, please report it to us through coordinated disclosure.
+If you discover a security vulnerability in Board Game Score Tracker, please report it to us as soon as possible.
 
-**Please do not report security vulnerabilities through public GitHub issues, discussions, or pull requests.**
+### How to Report
 
-Instead, please send an email to opensource-security[@]github.com.
+**Please do not report security vulnerabilities through public GitHub issues.**
 
-Please include as much of the information listed below as you can to help us better understand and resolve the issue:
+Instead, please send an email to: **thibaud200@[domain]** with:
 
-  * The type of issue (e.g., buffer overflow, SQL injection, or cross-site scripting)
-  * Full paths of source file(s) related to the manifestation of the issue
-  * The location of the affected source code (tag/branch/commit or direct URL)
-  * Any special configuration required to reproduce the issue
-  * Step-by-step instructions to reproduce the issue
-  * Proof-of-concept or exploit code (if possible)
-  * Impact of the issue, including how an attacker might exploit the issue
+1. **Description** of the vulnerability
+2. **Steps to reproduce** the issue
+3. **Potential impact** and affected components
+4. **Suggested fix** (if you have one)
 
-This information will help us triage your report more quickly.
+### What to Include
 
-## Policy
+Please include as much information as possible:
 
-See [GitHub's Safe Harbor Policy](https://docs.github.com/en/site-policy/security-policies/github-bug-bounty-program-legal-safe-harbor#1-safe-harbor-terms)
+- **Type of issue** (e.g., XSS, SQL injection, data exposure)
+- **Affected components** (frontend, backend, database)
+- **Source files** related to the vulnerability
+- **Proof-of-concept** or exploit code (if applicable)
+- **Impact assessment** and potential attack scenarios
+
+## Security Considerations
+
+Board Game Score Tracker handles:
+
+- **Local SQLite database** - No remote data transmission
+- **BoardGameGeek API integration** - Read-only operations
+- **Client-side data storage** - Browser localStorage/IndexedDB
+- **Express.js backend** - Local API server
+
+### Current Security Measures
+
+- ✅ **Input validation** with Zod schemas
+- ✅ **CORS protection** for API endpoints
+- ✅ **SQL injection prevention** with parameterized queries
+- ✅ **XSS protection** through React's built-in escaping
+- ✅ **Local-only operation** - No external data storage
+
+## Response Timeline
+
+- **Initial response**: Within 48 hours
+- **Status update**: Within 7 days
+- **Fix timeline**: Depends on severity (1-30 days)
+
+Thank you for helping keep Board Game Score Tracker secure! 🔒

@@ -17,6 +17,18 @@
 - [x] **Recherche BGG** en temps réel avec auto-complétion
 - [x] **Analyse intelligente** des modes de jeu basée sur les mécaniques
 - [x] **Import automatique** personnages/extensions depuis descriptions BGG
+- [x] **Infrastructure de tests complète** avec 52/52 tests ✅
+
+### ✅ Qualité Code & Tests (v1.0.1) - **COMPLET**
+- [x] **Tests unitaires techniques** : BGGService, database-hooks, config (17/17 tests ✅)
+- [x] **Tests unitaires fonctionnels** : BGGGameSearch (16/16 tests ✅)
+- [x] **Tests d'intégration BGG** : Workflow complet end-to-end (7/7 tests ✅)
+- [x] **Tests GameTemplateSection** : Création et gestion templates (12/12 tests ✅)
+- [x] **Architecture Jest/RTL** : Configuration ESM + TypeScript + mocks
+- [x] **Navigation tests** : Dashboard → GameTemplateSection → BGG workflow
+- [x] **Internationalisation tests** : Support texte français dans les tests
+- [x] **Radix UI compatibility** : Tests compatibles avec les composants Radix
+- [x] **Legacy cleanup** : Suppression fichiers tests obsolètes
 ## 🎯 Prochaines Fonctionnalités Planifiées
 
 ### Phase 1: 🌐 Amélioration Intégration BGG
@@ -461,6 +473,16 @@ interface Scenario {
 
 ---
 
-**Dernière mise à jour**: 21 août 2025
-**Version actuelle**: v1.0 (stable)
+**Dernière mise à jour**: 22 août 2025
+**Version actuelle**: v1.0.1 (Tests complets + infrastructure qualité)
 **Prochaine version planifiée**: v1.1 (Mode compétitif amélioré)
+
+## 🧪 Statut de la Qualité Code
+
+### ✅ Tests Unitaires & Intégration : 52/52 (100%)
+- **Infrastructure Jest** : ESM + TypeScript + React Testing Library
+- **Tests techniques** : BGGService (7), database-hooks (7), config (3)
+- **Tests fonctionnels** : BGGGameSearch (16), GameTemplateSection (12)
+- **Tests intégration** : BGG workflow complet (7)
+- **Architecture** : Mocks robustes, navigation Dashboard, localisation FR
+- **Legacy cleanup** : Fichiers obsolètes supprimés

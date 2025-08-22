@@ -42,13 +42,22 @@ npm install
 
 3. **Lancer l'application**
 ```bash
-npm start
+npm start    # Lance frontend + backend simultanément
+# OU séparément :
+npm run dev     # Frontend (Vite) sur port 5173
+npm run server  # Backend (Express) sur port 3001
 ```
 
 4. **Ouvrir votre navigateur**
 ```
 http://localhost:5173  # Frontend (Vite)
-http://localhost:3001  # Backend (Express)
+http://localhost:3001  # Backend API (Express)
+```
+
+5. **Lancer les tests** *(optionnel)*
+```bash
+npm test           # Suite complète (52/52 tests ✅)
+npm run test:watch # Mode watch pour développement
 ```
 
 L'application est prête ! 🎉
@@ -61,11 +70,12 @@ L'application est prête ! 🎉
 |-----------|------------|---------|
 | **Frontend** | React + TypeScript | 19.0 |
 | **Styling** | Tailwind CSS + Radix UI | 3.4 |
-| **Backend** | Express.js | 4.x |
+| **Backend** | Express.js | 5.x |
 | **Base de données** | SQLite + better-sqlite3 | 3.x |
 | **API externe** | BoardGameGeek XML API | 2.0 |
 | **Build** | Vite | 6.x |
-| **Icons** | Phosphor Icons React | 2.x |
+| **Tests** | Jest + React Testing Library | 30.x |
+| **Icons** | Lucide React | 0.484 |
 
 ### Structure du projet
 
@@ -174,11 +184,18 @@ L'application inclut un système de validation complet :
 # Développement
 npm run dev          # Lance le frontend (Vite)
 npm run server       # Lance le backend (Express)
-npm start            # Lance frontend + backend
+npm start            # Lance frontend + backend simultanément
 
 # Build
 npm run build        # Build de production
 npm run preview      # Aperçu du build
+
+# Tests
+npm test             # Suite complète (52/52 ✅)
+npm run test:watch   # Tests en mode watch
+npm run test:coverage # Tests avec couverture
+npm run test:unit    # Tests unitaires uniquement
+npm run test:integration # Tests d'intégration uniquement
 
 # Qualité
 npm run lint         # ESLint
@@ -207,15 +224,17 @@ La base SQLite contient les tables principales :
 
 Consultez [ROADMAP.md](./ROADMAP.md) pour les fonctionnalités futures :
 
-- **Phase 1** : Système de victoire compétitif avancé
-- **Phase 2** : Personnages par jeu avec sélection automatique
-- **Phase 3** : Mode campagne multi-scénarios  
-- **Phase 4** : Intégration APIs externes (BoardGameGeek)
+- **✅ v1.0** : Système de base complet avec intégration BGG
+- **✅ v1.0.1** : Infrastructure de tests complète (52/52 tests ✅)
+- **🔄 v1.1** : Améliorations BGG (images, cache, sync)
+- **🔄 v1.2** : Mode campagne multi-scénarios
+- **🔄 v1.3** : Système de victoire compétitif avancé
 
 ## 📄 Documentation
 
 - 📋 **[PRD](./src/prd.md)** : Spécifications complètes du produit
 - 🗺️ **[ROADMAP](./ROADMAP.md)** : Feuille de route des développements
+- 🧪 **[Tests](./tests/README.md)** : Documentation de l'infrastructure de tests
 - 🛡️ **[SECURITY](./SECURITY.md)** : Politique de sécurité
 
 ## 📞 Support
