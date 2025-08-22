@@ -11,11 +11,11 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { BGGGameSearch } from '@/components/BGGGameSearch'
-import { bggService } from '@/services/BGGService'
+import { BGGGameSearch } from '../../../src/components/BGGGameSearch'
+import { bggService } from '../../../src/services/BGGService'
 
 // Mock du service BGG
-jest.mock('@/services/BGGService')
+jest.mock('../../../src/services/BGGService')
 const mockBggService = bggService as jest.Mocked<typeof bggService>
 
 // Mock des données de test
@@ -69,7 +69,7 @@ describe('BGGGameSearch - Tests Fonctionnels', () => {
     }
     
     mockBggService.searchGames.mockResolvedValue(mockSearchResults)
-    mockBggService.getGameDetails.mockResolvedValue(mockGameData)
+    mockBggService.getGameData.mockResolvedValue(mockGameData)
     mockBggService.getGameData.mockResolvedValue(mockGameData)
   })
 
@@ -417,7 +417,7 @@ describe('BGGGameSearch - Tests Fonctionnels', () => {
 
     it('should handle game details fetch errors', async () => {
       // Arrange
-      mockBggService.getGameDetails.mockRejectedValue(new Error('Game not found'))
+      mockBggService.getGameData.mockRejectedValue(new Error('Game not found'))
       const user = userEvent.setup()
 
       render(
