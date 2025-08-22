@@ -31,73 +31,9 @@
 - [x] **Legacy cleanup** : Suppression fichiers tests obsolètes
 ## 🎯 Prochaines Fonctionnalités Planifiées
 
-### Phase 1: 🌐 Amélioration Intégration BGG
-**Statut**: 🔄 En cours (90% complet)
-**Priorité**: Moyenne
-
-#### � Améliorations Restantes:
-- [ ] **Images BGG** : Affichage des images de jeux importées
-- [ ] **Cache local** : Stockage des résultats de recherche BGG
-- [ ] **Sync périodique** : Mise à jour automatique des données BGG
-- [ ] **Amélioration UI** : Popup de suggestions qui ne se coupe plus dans les dialogs
-
-#### ✅ Déjà Implémenté:
-- [x] Service BGGService.ts avec XML parsing
-- [x] Composant BGGGameSearch avec auto-complétion
-- [x] Proxy Express pour contourner CORS
-- [x] Analyse intelligente des modes basée sur mécaniques
-- [x] Import automatique personnages/extensions
-- [x] Intégration complète dans GameTemplateSection
-
-### Phase 2: 🏆 Amélioration du Mode Compétitif
-**Statut**: ✅ Complet
-**Priorité**: Haute
-
-#### ✅ Fonctionnalités Implémentées:
-- [x] Système de scoring en temps réel
-- [x] Calcul automatique des classements
-- [x] Validation des scores négatifs/positifs
-- [x] Interface utilisateur optimisée pour la saisie rapide
-- [x] Sauvegarde automatique des modifications
-
-### Phase 3: 🎭 Gestion des Personnages par Jeu
-**Statut**: 🔄 Planifié
-**Priorité**: Haute
-
-#### Objectifs:
-- Base de données des personnages par jeu
-- Sélection automatique selon le template
-- Interface : Liste déroulante (nom) + Champ grisé (métier/classe)
-- Filtrage automatique des personnages disponibles
-
-#### Structure de données:
-```typescript
-interface GameCharacter {
-  name: string
-  class: string // Métier/Classe (auto-rempli)
-  description?: string
-  abilities?: string[]
-  gameTemplate: string // Lien vers le template
-}
-
-interface GameTemplate {
-  // Ajout
-  hasDetailedCharacters?: boolean // true si personnages prédéfinis
-  characterClasses?: GameCharacter[] // Liste complète
-}
-```
-
-#### Fichiers à modifier:
-- [ ] `src/App.tsx` - Nouvelles interfaces
-- [ ] `src/components/GameSetup.tsx` - Sélection personnages améliorée
-- [ ] `src/components/ActiveGame.tsx` - Affichage nom + classe
-- [ ] `src/lib/database.ts` - Base de données personnages
-- [ ] `server.js` - Endpoints personnages
-- [ ] Migration DB - Table game_characters
-
-### Phase 2.5: 🗄️ Refonte Structure Base de Données
-**Statut**: 🔄 Planifié 
-**Priorité**: Haute (Prérequis pour API et personnages avancés)
+### Phase 1: 🗄️ Refonte Structure Base de Données
+**Statut**: 🔄 En cours - **PRIORITÉ #1**
+**Priorité**: Critique (Prérequis pour toutes les améliorations futures)
 
 #### Problèmes Actuels:
 - **Personnages**: Stockés en CSV dans `game_templates.characters`
@@ -149,14 +85,282 @@ CREATE TABLE game_extensions (
 - 📊 **Analytics améliorées**: Statistiques par personnage/extension
 
 #### Migration Planifiée:
-- [ ] Script de migration des données existantes
+- [ ] **Script de migration des données existantes** (CRITIQUE)
+- [ ] **Analyse des données actuelles** : Audit du CSV existant
+- [ ] **Stratégie de conversion** : CSV → Tables structurées
+- [ ] **Backup automatique** : Sauvegarde avant migration
+- [ ] **Tests de migration** : Validation des données converties
+- [ ] **Rollback plan** : Restauration en cas d'échec
 - [ ] Nouveaux endpoints API pour personnages et extensions
 - [ ] Interface de gestion avancée des personnages
 - [ ] Validation des contraintes d'extensions
 - [ ] Tests de compatibilité ascendante
 
-### Phase 3: 💾 Backup & Import de Base de Données
-**Statut**: 🔄 Planifié
+#### 🔄 Plan de Migration Détaillé
+
+##### Étape 1: Analyse des Données Existantes
+```sql
+-- Analyser les données actuelles dans game_templates
+SELECT 
+  name as game_name,
+  characters,  -- CSV format actuel
+  extensions   -- CSV format actuel
+FROM game_templates 
+WHERE characters IS NOT NULL 
+   OR extensions IS NOT NULL;
+```
+
+##### Étape 2: Script de Migration
+```typescript
+interface MigrationScript {
+  // Parsing des données CSV existantes
+  parseCharactersCSV(csvData: string): ParsedCharacter[]
+  parseExtensionsCSV(csvData: string): ParsedExtension[]
+  
+  // Conversion vers nouvelles structures
+  convertToGameCharacters(parsed: ParsedCharacter[], gameTemplate: string): GameCharacter[]
+  convertToGameExtensions(parsed: ParsedExtension[], gameTemplate: string): GameExtension[]
+  
+  // Validation des données converties
+  validateMigratedData(characters: GameCharacter[], extensions: GameExtension[]): ValidationResult
+  
+  // Opérations de migration
+  backupCurrentData(): Promise<BackupResult>
+  migrateCharacters(): Promise<MigrationResult>
+  migrateExtensions(): Promise<MigrationResult>
+  cleanupLegacyColumns(): Promise<void>
+}
+```
+
+##### Étape 3: Nouvelle Structure vs Ancienne
+```sql
+-- AVANT (Actuel)
+CREATE TABLE game_templates (
+  name TEXT PRIMARY KEY,
+  characters TEXT,  -- CSV: "Héros,Voleur,Mage"
+  extensions TEXT   -- CSV: "Extension 1,Extension 2"
+  -- autres colonnes...
+);
+
+-- APRÈS (v1.1)
+CREATE TABLE game_templates (
+  name TEXT PRIMARY KEY,
+  characters TEXT,  -- DEPRECATED, gardé pour compatibilité
+  extensions TEXT,  -- DEPRECATED, gardé pour compatibilité
+  has_detailed_characters BOOLEAN DEFAULT FALSE
+  -- autres colonnes...
+);
+
+CREATE TABLE game_characters (
+  id TEXT PRIMARY KEY,
+  game_template TEXT NOT NULL,
+  name TEXT NOT NULL,               -- "Héros" extrait du CSV
+  class_type TEXT,                  -- NULL initialement, à remplir manuellement
+  description TEXT,                 -- NULL initialement
+  abilities TEXT,                   -- JSON array, vide initialement
+  image_url TEXT,                   -- NULL, à remplir via BGG
+  source TEXT DEFAULT 'migrated',   -- Marqué comme données migrées
+  external_id TEXT,                 -- NULL initialement
+  FOREIGN KEY (game_template) REFERENCES game_templates(name)
+);
+
+CREATE TABLE game_extensions (
+  id TEXT PRIMARY KEY,
+  game_template TEXT NOT NULL,
+  name TEXT NOT NULL,               -- "Extension 1" extrait du CSV
+  description TEXT,                 -- NULL initialement
+  min_players INTEGER,              -- NULL, à définir manuellement
+  max_players INTEGER,              -- NULL, à définir manuellement
+  adds_characters INTEGER DEFAULT 0, -- 0 par défaut
+  adds_mechanics TEXT,              -- JSON array vide
+  image_url TEXT,                   -- NULL, à remplir via BGG
+  source TEXT DEFAULT 'migrated',   -- Marqué comme données migrées
+  external_id TEXT,                 -- NULL initialement
+  FOREIGN KEY (game_template) REFERENCES game_templates(name)
+);
+```
+
+##### Étape 4: Exemples de Conversion
+```typescript
+// EXEMPLE: Migration d'un jeu existant
+// AVANT: game_templates.characters = "Barbare,Archer,Clerc,Mage"
+// APRÈS: 4 entrées dans game_characters
+
+const gloomhavenCharacters = [
+  {
+    id: 'gloomhaven-barbare-001',
+    game_template: 'Gloomhaven',
+    name: 'Barbare',
+    class_type: null,  // À remplir plus tard
+    source: 'migrated',
+    abilities: '[]'
+  },
+  {
+    id: 'gloomhaven-archer-002', 
+    game_template: 'Gloomhaven',
+    name: 'Archer',
+    class_type: null,
+    source: 'migrated',
+    abilities: '[]'
+  }
+  // ... etc
+];
+```
+
+##### Étape 5: Validation et Tests
+```typescript
+interface MigrationValidation {
+  // Vérifier que toutes les données CSV ont été converties
+  validateCharacterMigration(): Promise<ValidationResult>
+  validateExtensionMigration(): Promise<ValidationResult>
+  
+  // Vérifier l'intégrité référentielle
+  validateForeignKeys(): Promise<ValidationResult>
+  
+  // Comparer les données avant/après
+  compareDataIntegrity(): Promise<ComparisonResult>
+  
+  // Tests de fonctionnement avec les nouvelles structures
+  testNewDataStructure(): Promise<TestResult>
+}
+```
+
+##### Étape 6: Plan de Rollback
+```sql
+-- Si la migration échoue, restaurer l'état précédent
+-- Supprimer les nouvelles tables
+DROP TABLE IF EXISTS game_characters;
+DROP TABLE IF EXISTS game_extensions;
+
+-- Restaurer game_templates depuis backup
+-- Le backup sera automatiquement créé avant migration
+```
+
+#### 📋 Checklist de Migration
+- [ ] **Backup automatique** des données actuelles
+- [ ] **Parser CSV** des personnages existants  
+- [ ] **Parser CSV** des extensions existantes
+- [ ] **Créer nouvelles tables** avec contraintes
+- [ ] **Convertir et insérer** données personnages
+- [ ] **Convertir et insérer** données extensions
+- [ ] **Valider intégrité** des données migrées
+- [ ] **Tests fonctionnels** avec nouvelles structures
+- [ ] **Marquer colonnes legacy** comme deprecated
+- [ ] **Documentation** du processus de migration
+
+#### ⚠️ Risques et Mitigation
+- **Perte de données** → Backup automatique obligatoire
+- **Parsing CSV incorrect** → Tests sur données réelles d'abord
+- **Contraintes violées** → Validation avant insertion
+- **Performance** → Migration par batch si volume important
+- **Rollback nécessaire** → Script de restauration automatique
+
+### Phase 2: � Finalisation Intégration BGG
+**Statut**: 🔄 Planifié - **PRIORITÉ #2** (dépend de Phase 1)
+**Priorité**: Haute
+
+#### Améliorations Basées sur la Nouvelle BDD:
+- [ ] **Images BGG** : Stockage des images dans `image_url` des nouvelles tables
+- [ ] **Cache local** : Stockage des résultats de recherche BGG
+- [ ] **Sync périodique** : Mise à jour automatique des données BGG
+- [ ] **Import personnages structuré** : Utilisation de la table `game_characters`
+- [ ] **Import extensions enrichi** : Utilisation de la table `game_extensions`
+- [ ] **Amélioration UI** : Popup de suggestions qui ne se coupe plus dans les dialogs
+
+#### ✅ Déjà Implémenté:
+- [x] Service BGGService.ts avec XML parsing
+- [x] Composant BGGGameSearch avec auto-complétion
+- [x] Proxy Express pour contourner CORS
+- [x] Analyse intelligente des modes basée sur mécaniques
+- [x] Import automatique personnages/extensions (CSV basique)
+- [x] Intégration complète dans GameTemplateSection
+
+### Phase 3: 🎭 Gestion des Personnages par Jeu
+**Statut**: 🔄 Planifié - **PRIORITÉ #3** (dépend de Phases 1+2)
+**Priorité**: Haute
+
+#### Objectifs:
+- Base de données des personnages par jeu (utilise la nouvelle table `game_characters`)
+- Sélection automatique selon le template
+- Interface : Liste déroulante (nom) + Champ grisé (métier/classe)
+- Filtrage automatique des personnages disponibles
+
+#### Structure de données:
+```typescript
+interface GameCharacter {
+  id: string
+  gameTemplate: string
+  name: string
+  classType: string // Métier/Classe (auto-rempli)
+  description?: string
+  abilities?: string[]
+  imageUrl?: string
+  source: 'manual' | 'api_boardgamegeek'
+  externalId?: string
+}
+
+interface GameTemplate {
+  // Ajout
+  hasDetailedCharacters?: boolean // true si personnages prédéfinis
+  characterClasses?: GameCharacter[] // Liste complète depuis BDD
+}
+```
+
+#### Fichiers à modifier:
+- [ ] `src/App.tsx` - Nouvelles interfaces
+- [ ] `src/components/GameSetup.tsx` - Sélection personnages améliorée
+- [ ] `src/components/ActiveGame.tsx` - Affichage nom + classe
+- [ ] `src/lib/database.ts` - CRUD pour nouvelle table game_characters
+- [ ] `server.js` - Endpoints personnages
+- [ ] Tests unitaires pour la gestion personnages
+
+### Phase 4: 🌍 Localisation et Internationalisation
+**Statut**: 🔄 Planifié - **PRIORITÉ #4**
+**Priorité**: Moyenne (Enhancement)
+
+#### Objectifs:
+- Support multilingue (Français, Anglais, Allemand)
+- Adaptation des formats de date/nombre selon la locale
+- Interface traduite pour tous les composants
+- Noms de jeux en multiple langues
+
+#### Technologies:
+- **react-i18next** pour la gestion des traductions
+- Fichiers JSON pour les chaînes de caractères
+- Détection automatique de la langue du navigateur
+- Stockage de la préférence utilisateur
+
+#### Langues Prioritaires:
+1. 🇫🇷 **Français** (langue principale)
+2. 🇺🇸 **Anglais** (international)
+3. 🇩🇪 **Allemand** (marché européen des jeux de société)
+
+#### Structure des traductions:
+```typescript
+// locales/fr.json
+{
+  "common": {
+    "save": "Sauvegarder",
+    "cancel": "Annuler",
+    "required": "obligatoire",
+    "optional": "optionnel"
+  },
+  "game": {
+    "setup": "Configuration de partie",
+    "players": "Joueurs",
+    "template": "Modèle de jeu"
+  }
+}
+```
+
+#### Fichiers à créer/modifier:
+- [ ] `src/locales/` - Dossier des traductions
+- [ ] `src/hooks/useTranslation.ts` - Hook personnalisé
+- [ ] `src/components/LanguageSelector.tsx` - Sélecteur de langue
+- [ ] Mise à jour de tous les composants avec les clés de traduction
+
+### Phase 5: 💾 Backup & Import de Base de Données
+**Statut**: 🔄 Planifié - **PRIORITÉ #5**
 **Priorité**: Moyenne (Utilitaire)
 
 #### 🎯 Objectifs:
@@ -179,6 +383,8 @@ interface DatabaseBackup {
     players: Player[]
     gameTemplates: GameTemplate[]
     gameSessions: GameSession[]
+    gameCharacters: GameCharacter[]  // Nouvelle table
+    gameExtensions: GameExtension[]  // Nouvelle table
   }
 }
 ```
@@ -198,6 +404,76 @@ interface DatabaseBackup {
 - [ ] `src/services/BackupService.ts` - Service export/import
 - [ ] `src/components/DatabaseBackup.tsx` - Interface utilisateur
 - [ ] `server.js` - Endpoints `/backup` et `/restore`
+- [ ] Validation de schéma lors de l'import
+- [ ] Migration automatique des anciennes versions
+
+#### ⚠️ Gestion des Conflits:
+- **Stratégies de merge** : Écraser, Fusionner, Ignorer
+- **Validation des IDs** : Éviter les doublons
+- **Rollback automatique** en cas d'erreur d'import
+
+### Phase 6: 🏆 Système de Score Compétitif Avancé
+**Statut**: 🔄 Planifié - **PRIORITÉ #6** (À détailler)
+**Priorité**: Moyenne
+
+#### Objectifs (À détailler selon vos besoins):
+- 📊 Classement temporel (mensuel, annuel, par saison)
+- 🏅 Points de victoire pondérés selon la difficulté
+- 🎖️ Système de trophées et succès/achievements
+- 🔥 Streak (séries de victoires consécutives)
+- 📈 Évolution des performances dans le temps
+- ⚔️ Rivalités entre joueurs (head-to-head stats)
+
+#### Fonctionnalités Potentielles:
+- Algorithme de classement ELO adapté aux jeux de société
+- Interface de tableau de bord compétitif
+- Calcul automatique des points de saison
+- Badges de réussite (Maître du Donjon, Stratège, Vainqueur Ultime, etc.)
+- Graphiques de progression des joueurs
+- Comparaisons statistiques détaillées
+
+#### Structure de données (À affiner):
+```typescript
+interface CompetitiveScore {
+  playerId: string
+  gameTemplate: string
+  eloRating: number
+  seasonPoints: number
+  achievements: Achievement[]
+  currentStreak: number
+  bestStreak: number
+  lastVictoryDate: string
+}
+
+interface Achievement {
+  id: string
+  name: string
+  description: string
+  unlockedAt: Date
+  category: 'victories' | 'participation' | 'strategy' | 'social'
+  icon: string
+  rarity: 'common' | 'rare' | 'epic' | 'legendary'
+}
+
+interface Season {
+  id: string
+  name: string
+  startDate: string
+  endDate: string
+  isActive: boolean
+  leaderboard: CompetitiveScore[]
+}
+```
+
+**❓ Questions à préciser:**
+- Quels types de trophées/achievements souhaitez-vous ?
+- Faut-il un système de saisons (mensuel/trimestriel/annuel) ?
+- Souhaitez-vous un algorithme ELO ou un système de points simples ?
+- Interface séparée ou intégrée aux statistiques existantes ?
+
+### Phase 7: 🏕️ Mode Campagne Multi-Scénarios
+**Statut**: 🔄 Planifié - **PRIORITÉ #7** (À détailler)
+**Priorité**: Moyenne
 - [ ] Validation de schéma lors de l'import
 - [ ] Migration automatique des anciennes versions
 
@@ -300,13 +576,23 @@ interface Achievement {
 **Statut**: 🔄 Planifié
 **Priorité**: Moyenne
 
-#### Objectifs:
-- Campagne = série de scénarios liés
-- Progression entre scénarios
-- Statistiques cumulées sur la campagne
+#### Objectifs (À détailler selon vos besoins):
+- Campagne = série de scénarios liés avec progression
+- Gestion de l'état entre scénarios (succès/échecs influencent la suite)
+- Statistiques cumulées sur l'ensemble de la campagne
 - Mode proche du coopératif (1 scénario = 1 session)
+- Sauvegarde/reprise de campagnes en cours
+- Arbre de progression avec scénarios conditionnels
 
-#### Structure de données:
+#### Fonctionnalités Potentielles:
+- **Progression narrative** : Déblocage de scénarios selon les résultats
+- **Persistance des personnages** : Évolution/amélioration entre scénarios
+- **Ressources de campagne** : Équipement, objets, or collectés
+- **Journal de campagne** : Historique des événements marquants
+- **Branches narratives** : Choix qui influencent les scénarios suivants
+- **Mode coop enrichi** : Objectifs de campagne complexes
+
+#### Structure de données (À affiner):
 ```typescript
 interface Campaign {
   id: string
@@ -314,8 +600,10 @@ interface Campaign {
   gameTemplate: string
   scenarios: Scenario[]
   participants: string[] // Player IDs
-  status: 'active' | 'completed' | 'paused'
+  status: 'active' | 'completed' | 'paused' | 'failed'
   startDate: string
+  currentScenario?: string
+  campaignData?: any // État spécifique (ressources, déblocages)
   description?: string
 }
 
@@ -323,12 +611,32 @@ interface Scenario {
   id: string
   campaignId: string
   name: string
+  description?: string
   order: number
   session?: GameSession // Session associée si jouée
-  status: 'pending' | 'completed' | 'failed'
+  status: 'locked' | 'available' | 'completed' | 'failed'
   prerequisites?: string[] // Scénarios requis
+  unlocks?: string[] // Scénarios débloqués par celui-ci
+  objectives?: string[]
+  rewards?: string[]
+}
+
+interface CampaignProgress {
+  campaignId: string
+  totalScenarios: number
+  completedScenarios: number
+  failedScenarios: number
+  currentBranch?: string
+  unlockedScenarios: string[]
 }
 ```
+
+**❓ Questions à préciser:**
+- Quels jeux supporteront le mode campagne en priorité ?
+- Faut-il une progression des personnages entre scénarios ?
+- Souhaitez-vous des ressources/équipements persistants ?
+- Interface dédiée ou intégrée aux parties existantes ?
+- Gestion des sauvegardes multiples de campagnes ?
 
 #### Fichiers à créer/modifier:
 - [ ] `src/components/CampaignManager.tsx` - Nouveau composant
@@ -338,30 +646,40 @@ interface Scenario {
 - [ ] `server.js` - Endpoints campagnes
 - [ ] Migration DB - Tables campaigns et scenarios
 
-### Phase 5: 🌐 Intégrations API Externes
-**Statut**: � Conceptuel
-**Priorité**: Basse
+### Phase 8: 🌐 Intégrations BGG Avancées
+**Statut**: 🔄 Planifié - **PRIORITÉ #8**
+**Priorité**: Basse (Enhancement)
 
 #### APIs Cibles:
-- **BoardGameGeek**: Données des jeux, reviews, rankings
-- **IGDB**: Images, descriptions enrichies
+- **BoardGameGeek**: Données enrichies, reviews, rankings, images haute résolution
+- **IGDB**: Images supplémentaires, descriptions enrichies
 - **Steam**: Intégration jeux PC (si applicable)
 
-#### Fonctionnalités:
-- Import automatique des métadonnées de jeux
-- Synchronisation des scores avec BGG
-- Images et descriptions automatiques
+#### Fonctionnalités Avancées:
+- Import automatique de métadonnées étendues
+- Synchronisation des scores avec BGG (si API disponible)
+- Images haute résolution et galeries
 - Suggestions de jeux basées sur l'historique
+- Reviews et notes importées
+- Données de complexité et recommandations d'âge
 
 #### Prérequis:
-- ✅ Phase 2.5 (Refonte DB) **OBLIGATOIRE**
-- Authentification externe (OAuth)
-- Cache local des données API
+- ✅ Phase 1 (Refonte DB) **OBLIGATOIRE**
+- ✅ Phase 2 (BGG Finalisé) **OBLIGATOIRE**
+- Authentification externe (OAuth si nécessaire)
+- Cache local robuste des données API
 - Gestion de la limitation de requêtes (rate limiting)
 
-### Phase 7: 🌍 Localisation et Internationalisation
-**Statut**: 🔄 Planifié
-**Priorité**: Basse (Enhancement)
+#### Fichiers à créer/modifier:
+- [ ] `src/services/BGGAdvancedService.ts` - Service enrichi
+- [ ] `src/components/GameGallery.tsx` - Galerie d'images
+- [ ] `src/components/GameReviews.tsx` - Affichage reviews
+- [ ] `src/lib/api-cache.ts` - Système de cache avancé
+
+## 🚫 Fonctionnalités Volontairement Exclues
+
+### Gestion Multi-Utilisateurs / Profils
+**Décision**: ❌ Non implémenté par design
 
 #### Objectifs:
 - Support multilingue (Français, Anglais)
@@ -424,38 +742,72 @@ interface Scenario {
 
 ## 📊 Métriques de Progression
 
-### Phase 1 - Mode Compétitif
+### Phase 1 - Refonte BDD (PRIORITÉ #1)
+- [ ] 0/1 **script de migration critique** créé et testé
+- [ ] 0/1 **backup automatique** des données actuelles
+- [ ] 0/2 **nouvelles tables** créées (game_characters, game_extensions)
+- [ ] 0/1 **parsing CSV** des données existantes (characters + extensions)
+- [ ] 0/1 **conversion et validation** des données migrées
+- [ ] 0/4 **fichiers API** modifiés (database.ts, server.js, etc.)
+- [ ] 0/1 **plan de rollback** testé en cas d'échec
+- [ ] 0/1 **tests de compatibilité** ascendante validés
+
+### Phase 2 - Finalisation BGG (PRIORITÉ #2)
+- [ ] 0/4 améliorations implémentées (images, cache, sync, UI)
+- [ ] 0/2 nouveaux endpoints BGG créés
+- [ ] 0/1 système de cache local implémenté
+
+### Phase 3 - Personnages par Jeu (PRIORITÉ #3)
 - [ ] 0/6 fichiers modifiés
-- [ ] 0/1 migration DB créée
-- [ ] 0/1 interface utilisateur testée
+- [ ] 0/1 interface personnages avancée créée
+- [ ] 0/1 intégration avec nouvelle BDD testée
 
-### Phase 2 - Personnages par Jeu
-- [ ] 0/6 fichiers modifiés
-- [ ] 0/1 migration DB créée
-- [ ] 0/1 base de données personnages créée
+### Phase 4 - Localisation (PRIORITÉ #4)
+- [ ] 0/3 langues implémentées (FR, EN, DE)
+- [ ] 0/1 système i18n configuré
+- [ ] 0/XX composants traduits
 
-### Phase 3 - Mode Campagne
-- [ ] 0/8 fichiers créés/modifiés
-- [ ] 0/1 migration DB créée
-- [ ] 0/1 interface campagne testée
+### Phase 5 - Backup/Import BDD (PRIORITÉ #5)
+- [ ] 0/3 fichiers créés (BackupService, DatabaseBackup, endpoints)
+- [ ] 0/1 interface backup/restore créée
+- [ ] 0/1 système de migration automatique implémenté
 
-### Phase 4 - API Jeux
-- [ ] 0/3 fichiers créés
-- [ ] 0/1 service API implémenté
-- [ ] 0/1 système de cache créé
+### Phase 6 - Score Compétitif Avancé (PRIORITÉ #6) - À détailler
+- [ ] 0/? fonctionnalités à définir
+- [ ] 0/? fichiers à créer/modifier
+
+### Phase 7 - Mode Campagne (PRIORITÉ #7) - À détailler
+- [ ] 0/? fonctionnalités à définir
+- [ ] 0/8 fichiers créés/modifiés estimés
+
+### Phase 8 - BGG Avancé (PRIORITÉ #8)
+- [ ] 0/4 services API avancés créés
+- [ ] 0/3 composants d'affichage enrichi créés
+- [ ] 0/1 système de cache robuste implémenté
 
 ## 🔄 Notes de Développement
 
-### Dépendances entre Phases
-- Phase 2 peut être développée en parallèle de Phase 1
-- Phase 3 dépend de Phase 2 (personnages)
-- Phase 4 peut enrichir Phase 2 (données personnages)
+### Dépendances entre Phases (Nouvelle Organisation)
+- **Phase 1** (Refonte BDD) : Prérequis OBLIGATOIRE pour toutes les phases suivantes
+- **Phase 2** (BGG Final) : Dépend de Phase 1 pour stockage images/métadonnées
+- **Phase 3** (Personnages) : Dépend de Phases 1+2 pour personnages enrichis BGG
+- **Phase 4** (Localisation) : Indépendante, peut être développée en parallèle
+- **Phase 5** (Backup) : Dépend de Phase 1 pour inclure nouvelles tables
+- **Phase 6** (Score Compétitif) : Utilise la base existante + Phase 1
+- **Phase 7** (Campagne) : Dépend de Phase 3 (personnages avancés)
+- **Phase 8** (BGG Avancé) : Dépend de Phases 1+2+3
 
 ### Considérations Techniques
 - Maintenir la compatibilité ascendante des données
-- Prévoir les migrations de base de données
+- Prévoir les migrations de base de données pour chaque phase
 - Conserver l'architecture modulaire actuelle
 - Tests unitaires pour chaque nouvelle fonctionnalité
+- **Phase 1 est critique** : Toute l'architecture future en dépend
+
+### Prochaines Actions Recommandées
+1. **Commencer Phase 1** (Refonte BDD) - Critique pour tout le reste
+2. **Définir Phase 6** (Score Compétitif) selon vos besoins spécifiques
+3. **Définir Phase 7** (Mode Campagne) selon les jeux que vous utilisez
 
 ## 🐛 Améliorations UX Mineures
 
@@ -475,7 +827,13 @@ interface Scenario {
 
 **Dernière mise à jour**: 22 août 2025
 **Version actuelle**: v1.0.1 (Tests complets + infrastructure qualité)
-**Prochaine version planifiée**: v1.1 (Mode compétitif amélioré)
+**Prochaine version planifiée**: v1.1 (Refonte BDD + BGG finalisé)
+
+### 🎯 Roadmap Versions Futures
+- **v1.1** : Phase 1 (Refonte BDD) + Phase 2 (BGG Final)
+- **v1.2** : Phase 3 (Personnages avancés) + Phase 4 (Localisation)
+- **v1.3** : Phase 5 (Backup/Import) + Phase 6 (Score Compétitif - à détailler)
+- **v1.4** : Phase 7 (Mode Campagne - à détailler) + Phase 8 (BGG Avancé)
 
 ## 🧪 Statut de la Qualité Code
 
