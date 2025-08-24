@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ArrowLeft, Plus, GameController, Trash, PencilSimple, ChartBar, Users, PersonSimple, Package, Asterisk } from '@phosphor-icons/react'
-import { GameTemplate, GameSession } from '@/App'
+import type { GameTemplate, GameSession } from '../../App'
 import { useDatabase } from '@/lib/database-context'
 import { useGameHistory } from '@/lib/database-hooks'
 import { toast } from 'sonner'
@@ -130,7 +130,11 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
               supportsCooperative,
               supportsCompetitive,
               supportsCampaign,
-              defaultMode
+              defaultMode,
+              min_players: gameData.minPlayers,
+              max_players: gameData.maxPlayers,
+              image: gameData.image || '',
+              extensions: gameData.expansions || []
             }))
             
             // Log pour debugging et monitoring de l'analyse intelligente
@@ -284,13 +288,17 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
   
   // Form state
   const [formData, setFormData] = useState({
-    name: '',
-    hasCharacters: false,
-    characters: '',
-    supportsCooperative: false,
-    supportsCompetitive: false,
-    supportsCampaign: false,
-    defaultMode: 'competitive' as 'cooperative' | 'competitive' | 'campaign'
+  name: '',
+  hasCharacters: false,
+  characters: '',
+  supportsCooperative: false,
+  supportsCompetitive: false,
+  supportsCampaign: false,
+  defaultMode: 'competitive' as 'cooperative' | 'competitive' | 'campaign',
+  min_players: undefined as number | undefined,
+  max_players: undefined as number | undefined,
+  image: '',
+  extensions: [] as any[]
   })
 
   const resetForm = () => {
@@ -301,7 +309,11 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       supportsCooperative: false,
       supportsCompetitive: false,
       supportsCampaign: false,
-      defaultMode: 'competitive' as 'cooperative' | 'competitive' | 'campaign'
+      defaultMode: 'competitive' as 'cooperative' | 'competitive' | 'campaign',
+      min_players: undefined,
+      max_players: undefined,
+      image: '',
+      extensions: []
     })
     setFormResetKey(prev => prev + 1) // Incrémenter pour forcer le re-render du BGGGameSearch
   }
@@ -315,7 +327,11 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       supportsCooperative: template.supportsCooperative || false,
       supportsCompetitive: template.supportsCompetitive || false,
       supportsCampaign: template.supportsCampaign || false,
-      defaultMode: template.defaultMode || 'competitive'
+      defaultMode: template.defaultMode || 'competitive',
+      min_players: template.min_players,
+      max_players: template.max_players,
+      image: template.image || '',
+      extensions: []
     })
   }
 
@@ -349,7 +365,10 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       supportsCooperative: formData.supportsCooperative,
       supportsCompetitive: formData.supportsCompetitive,
       supportsCampaign: formData.supportsCampaign,
-      defaultMode: formData.defaultMode
+      defaultMode: formData.defaultMode,
+      min_players: formData.min_players,
+      max_players: formData.max_players,
+      image: formData.image
     }
 
     try {
@@ -359,6 +378,18 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
         setEditingTemplate(null)
       } else {
         await db!.addGameTemplate(template)
+        // Ajout des extensions BGG si présentes
+        if (db.addGameExtension && formData.extensions && formData.extensions.length > 0) {
+          for (const ext of formData.extensions) {
+            await db.addGameExtension({
+              name: ext.name || ext,
+              base_game_name: template.name,
+              min_players: typeof ext.minPlayers === 'number' ? ext.minPlayers : undefined,
+              max_players: typeof ext.maxPlayers === 'number' ? ext.maxPlayers : undefined,
+              image: ext.image || undefined
+            })
+          }
+        }
         toast.success('Game template added successfully')
         setShowAddDialog(false)
       }

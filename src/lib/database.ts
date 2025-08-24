@@ -1,6 +1,13 @@
 import { Player, GameSession, GameTemplate } from '@/App'
 
 export interface Database {
+  addGameExtension?(extension: {
+    name: string;
+    base_game_name: string;
+    min_players?: number;
+    max_players?: number;
+    image?: string;
+  }): Promise<any>;
   // Player operations
   getPlayers(): Promise<Player[]>
   addPlayer(player: Omit<Player, 'id'>): Promise<Player>
@@ -39,9 +46,7 @@ export const DEFAULT_GAME_TEMPLATES: GameTemplate[] = [
   {
     name: 'Cthulhu',
     hasCharacters: true,
-    characters: ['Investigator', 'Detective', 'Journalist', 'Professor', 'Doctor', 'Mystic'],
-    hasExtensions: true,
-    extensions: ['Dunwich Horror', 'King in Yellow', 'The Lurker at the Threshold'],
+  characters: ['Investigator', 'Detective', 'Journalist', 'Professor', 'Doctor', 'Mystic'],
     supportsCooperative: true,
     supportsCompetitive: false,
     supportsCampaign: false,
@@ -50,9 +55,7 @@ export const DEFAULT_GAME_TEMPLATES: GameTemplate[] = [
   {
     name: 'Demeure de l\'Épouvante',
     hasCharacters: true,
-    characters: ['Explorer', 'Scholar', 'Occultist', 'Psychic', 'Dilettante', 'Athlete'],
-    hasExtensions: true,
-    extensions: ['Widow\'s Walk', 'Cosmic Horror'],
+  characters: ['Explorer', 'Scholar', 'Occultist', 'Psychic', 'Dilettante', 'Athlete'],
     supportsCooperative: true,
     supportsCompetitive: false,
     supportsCampaign: false,

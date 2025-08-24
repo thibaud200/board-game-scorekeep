@@ -1,5 +1,5 @@
 import { Database, generateId, DEFAULT_GAME_TEMPLATES } from './database'
-import { Player, GameSession, GameTemplate } from '@/App'
+import type { Player, GameSession, GameTemplate } from '../App'
 import * as sql from "sql.js"
 
 const initSqlJs = sql.default ?? sql
@@ -21,6 +21,91 @@ interface SqlJs {
 }
 
 export class SQLiteDatabase implements Database {
+  // Extension operations
+  async getGameExtensions(baseGameName?: string): Promise<any[]> {
+    if (!this.db) throw new Error('Database not initialized');
+    let query = 'SELECT * FROM game_extensions';
+    let params: any[] = [];
+    if (baseGameName) {
+      query += ' WHERE base_game_name = ?';
+      params.push(baseGameName);
+    }
+    const stmt = this.db.prepare(query);
+    if (params.length) stmt.bind(params);
+    const extensions: any[] = [];
+      while (stmt.step()) {
+        const row = stmt.getAsObject();
+        extensions.push({
+          id: row.id,
+          name: row.name,
+          base_game_name: row.base_game_name,
+          description: row.description || undefined,
+          image: row.image || undefined,
+          min_players: row.min_players !== undefined ? Number(row.min_players) : undefined,
+          max_players: row.max_players !== undefined ? Number(row.max_players) : undefined
+        });
+      }
+    stmt.free();
+    return extensions;
+  }
+
+  async addGameExtension(extension: { name: string; base_game_name: string; description?: string; image?: string; min_players?: number; max_players?: number }): Promise<any> {
+    if (!this.db) throw new Error('Database not initialized');
+    const id = generateId();
+      this.db.run(`
+        INSERT OR REPLACE INTO game_extensions (
+          id, name, base_game_name, description, image, min_players, max_players
+        ) VALUES (?, ?, ?, ?, ?, ?)
+      `, [
+        id,
+        extension.name,
+        extension.base_game_name,
+        extension.description || null,
+        extension.image || null,
+        extension.min_players || null,
+        extension.max_players || null
+      ]);
+    this.saveToStorage();
+    return { id, ...extension };
+  }
+
+  async updateGameExtension(id: string, updates: { name?: string; description?: string; image?: string; min_players?: number; max_players?: number }): Promise<any> {
+    if (!this.db) throw new Error('Database not initialized');
+    const sets: string[] = [];
+    const values: any[] = [];
+    if (updates.name !== undefined) {
+      sets.push('name = ?');
+      values.push(updates.name);
+    }
+    if (updates.description !== undefined) {
+      sets.push('description = ?');
+      values.push(updates.description);
+    }
+    if (updates.image !== undefined) {
+      sets.push('image = ?');
+      values.push(updates.image);
+    }
+      if (updates.min_players !== undefined) {
+        sets.push('min_players = ?');
+        values.push(updates.min_players);
+      }
+      if (updates.max_players !== undefined) {
+        sets.push('max_players = ?');
+        values.push(updates.max_players);
+      }
+    if (sets.length === 0) throw new Error('No updates provided');
+    values.push(id);
+    this.db.run(`UPDATE game_extensions SET ${sets.join(', ')} WHERE id = ?`, values);
+    this.saveToStorage();
+    const extensions = await this.getGameExtensions();
+    return extensions.find(e => e.id === id);
+  }
+
+  async deleteGameExtension(id: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    this.db.run('DELETE FROM game_extensions WHERE id = ?', [id]);
+    this.saveToStorage();
+  }
   private db: SqlDatabase | null = null
   private SQL: SqlJs | null = null
   private dbPath = 'board-game-tracker.db'
@@ -103,7 +188,11 @@ export class SQLiteDatabase implements Database {
         has_characters BOOLEAN NOT NULL,
         characters TEXT,
         is_cooperative_by_default BOOLEAN NOT NULL,
-        base_game_name TEXT -- NULL si jeu de base, sinon nom du jeu de base
+        base_game_name TEXT, -- NULL si jeu de base, sinon nom du jeu de base
+        min_players INTEGER,
+        max_players INTEGER,
+        description TEXT,
+        image TEXT
       )
     `)
 
@@ -114,6 +203,9 @@ export class SQLiteDatabase implements Database {
         name TEXT NOT NULL,
         base_game_name TEXT NOT NULL,
         description TEXT,
+        image TEXT,
+        min_players INTEGER,
+        max_players INTEGER,
         FOREIGN KEY (base_game_name) REFERENCES game_templates(name)
       )
     `)
@@ -135,6 +227,7 @@ export class SQLiteDatabase implements Database {
         end_time TEXT,
         duration INTEGER,
         completed BOOLEAN NOT NULL DEFAULT 0,
+        image TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `)
@@ -467,7 +560,7 @@ export class SQLiteDatabase implements Database {
     const templates: GameTemplate[] = []
 
     while (stmt.step()) {
-      const row = stmt.getAsObject()
+      const row = stmt.getAsObject();
       templates.push({
         name: row.name as string,
         hasCharacters: Boolean(row.has_characters),
@@ -475,8 +568,12 @@ export class SQLiteDatabase implements Database {
         supportsCooperative: Boolean(row.supports_cooperative),
         supportsCompetitive: Boolean(row.supports_competitive),
         supportsCampaign: Boolean(row.supports_campaign),
-  defaultMode: row.default_mode as 'cooperative' | 'competitive' | 'campaign' || 'competitive'
-      })
+        defaultMode: row.default_mode as 'cooperative' | 'competitive' | 'campaign' || 'competitive',
+        min_players: row.min_players !== undefined ? Number(row.min_players) : undefined,
+        max_players: row.max_players !== undefined ? Number(row.max_players) : undefined,
+        description: row.description as string || undefined,
+        image: row.image as string || undefined
+      });
     }
 
     stmt.free()
@@ -488,17 +585,18 @@ export class SQLiteDatabase implements Database {
 
     this.db.run(`
       INSERT OR REPLACE INTO game_templates (
-        name, has_characters, characters, supports_cooperative, supports_competitive, supports_campaign, default_mode, base_game_name
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        name, has_characters, characters, is_cooperative_by_default, base_game_name, min_players, max_players, description, image
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       template.name,
       template.hasCharacters ? 1 : 0,
       template.characters ? JSON.stringify(template.characters) : null,
-      template.supportsCooperative ? 1 : 0,
-      template.supportsCompetitive ? 1 : 0,
-      template.supportsCampaign ? 1 : 0,
-      template.defaultMode || 'competitive',
-      (template as any).base_game_name || null
+      template.isCooperativeByDefault ? 1 : 0,
+      (template as any).base_game_name || null,
+      template.min_players || null,
+      template.max_players || null,
+      template.description || null,
+      template.image || null
     ])
 
     this.saveToStorage()
@@ -512,32 +610,36 @@ export class SQLiteDatabase implements Database {
     const values: any[] = []
 
     if (updates.hasCharacters !== undefined) {
-      sets.push('has_characters = ?')
-      values.push(updates.hasCharacters ? 1 : 0)
+      sets.push('has_characters = ?');
+      values.push(updates.hasCharacters ? 1 : 0);
     }
     if (updates.characters !== undefined) {
-      sets.push('characters = ?')
-      values.push(updates.characters ? JSON.stringify(updates.characters) : null)
+      sets.push('characters = ?');
+      values.push(updates.characters ? JSON.stringify(updates.characters) : null);
     }
-    if (updates.supportsCooperative !== undefined) {
-      sets.push('supports_cooperative = ?')
-      values.push(updates.supportsCooperative ? 1 : 0)
-    }
-    if (updates.supportsCompetitive !== undefined) {
-      sets.push('supports_competitive = ?')
-      values.push(updates.supportsCompetitive ? 1 : 0)
-    }
-    if (updates.supportsCampaign !== undefined) {
-      sets.push('supports_campaign = ?')
-      values.push(updates.supportsCampaign ? 1 : 0)
-    }
-    if (updates.defaultMode !== undefined) {
-      sets.push('default_mode = ?')
-      values.push(updates.defaultMode)
+    if (updates.isCooperativeByDefault !== undefined) {
+      sets.push('is_cooperative_by_default = ?');
+      values.push(updates.isCooperativeByDefault ? 1 : 0);
     }
     if ((updates as any).base_game_name !== undefined) {
-      sets.push('base_game_name = ?')
-      values.push((updates as any).base_game_name)
+      sets.push('base_game_name = ?');
+      values.push((updates as any).base_game_name);
+    }
+    if (updates.min_players !== undefined) {
+      sets.push('min_players = ?');
+      values.push(updates.min_players);
+    }
+    if (updates.max_players !== undefined) {
+      sets.push('max_players = ?');
+      values.push(updates.max_players);
+    }
+    if (updates.description !== undefined) {
+      sets.push('description = ?');
+      values.push(updates.description);
+    }
+    if (updates.image !== undefined) {
+      sets.push('image = ?');
+      values.push(updates.image);
     }
 
     if (sets.length === 0) {
@@ -556,10 +658,13 @@ export class SQLiteDatabase implements Database {
   }
 
   async deleteGameTemplate(name: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized')
-
-    this.db.run('DELETE FROM game_templates WHERE name = ?', [name])
-    this.saveToStorage()
+  if (!this.db) throw new Error('Database not initialized');
+  // Supprime les extensions associées
+  this.db.run('DELETE FROM game_extensions WHERE base_game_name = ?', [name]);
+  // Supprime les personnages liés
+  this.db.run('DELETE FROM game_characters WHERE game_name = ?', [name]);
+  this.db.run('DELETE FROM game_templates WHERE name = ?', [name]);
+  this.saveToStorage();
   }
 
   // Current Game operations

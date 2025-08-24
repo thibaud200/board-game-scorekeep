@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Play, Users, GameController, Clock, Trophy, Bookmark, Asterisk } from '@phosphor-icons/react';
-import { Player, GameSession, GameTemplate } from '@/App';
+import type { Player, GameSession, GameTemplate } from '../../App';
 
 interface GameSetupProps {
   players: Player[]
@@ -20,6 +20,7 @@ interface GameSetupProps {
 
 export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: GameSetupProps) {
   const [gameType, setGameType] = useState('')
+  const [selectKey, setSelectKey] = useState(0)
   const [gameMode, setGameMode] = useState<'cooperative' | 'competitive' | 'campaign'>('competitive')
   const [isCooperative, setIsCooperative] = useState(false) // Keep for backward compatibility
   const [allowResurrection, setAllowResurrection] = useState(false)
@@ -36,7 +37,8 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
    * Updates game mode, cooperative settings, and clears character assignments
    */
   const handleGameTypeChange = (value: string) => {
-    setGameType(value)
+  setGameType(value)
+  setSelectKey(k => k + 1)
     const template = gameTemplates.find(t => t.name === value)
     if (template) {
       // Set default mode from template
@@ -160,7 +162,7 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
 
   // --- Extensions fetcher ---
   function useExtensions(baseGameName: string) {
-    const [extensions, setExtensions] = useState<string[]>([]);
+    const [extensions, setExtensions] = useState<any[]>([]);
     useEffect(() => {
       if (!baseGameName) {
         setExtensions([]);
@@ -168,7 +170,7 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
       }
       fetch(`/api/extensions/${encodeURIComponent(baseGameName)}`)
         .then(res => res.json())
-        .then(data => setExtensions(data.map((ext: any) => ext.name)))
+        .then(data => setExtensions(data))
         .catch(() => setExtensions([]));
     }, [baseGameName]);
     return extensions;
@@ -190,20 +192,42 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
           </div>
 
           <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <GameController size={18} />
-                Game Details
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <GameController size={18} />
+                  Game Details
+                </CardTitle>
+                {selectedTemplate && (
+                  <div className="mt-2 space-y-1">
+                    {selectedTemplate.image && (
+                      <img src={selectedTemplate.image} alt="Game" className="max-h-24 rounded" />
+                    )}
+                    {selectedTemplate.description && (
+                      <div className="text-sm text-muted-foreground">{selectedTemplate.description}</div>
+                    )}
+                    <div className="flex gap-2 text-xs text-muted-foreground">
+                      {selectedTemplate.min_players && (
+                        <span>Min players: {selectedTemplate.min_players}</span>
+                      )}
+                      {selectedTemplate.max_players && (
+                        <span>Max players: {selectedTemplate.max_players}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
               <div className="space-y-3">
                 <Label htmlFor="gameType" className="text-sm font-medium flex items-center gap-1">
                   Game Name
                   <Asterisk size={8} className="text-destructive" />
                 </Label>
                 <div className="space-y-2">
-                  <Select value={gameType} onValueChange={handleGameTypeChange}>
+                  <Select
+                    key={selectKey}
+                    value={gameType}
+                    onValueChange={handleGameTypeChange}
+                  >
                     <SelectTrigger className="h-11">
                       <SelectValue placeholder="Select a game or type custom name" />
                     </SelectTrigger>
@@ -345,36 +369,50 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                 </div>
               )}
 
-              {selectedTemplate && (
-                (() => {
-                  const extensions = useExtensions(selectedTemplate.name);
-                  if (extensions.length === 0) return null;
-                  return (
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium">Extensions ({selectedExtensions.length} selected)</Label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {extensions.map(extension => (
-                          <div
-                            key={extension}
-                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors min-h-[44px] ${
-                              selectedExtensions.includes(extension)
-                                ? 'border-primary bg-primary/5'
-                                : 'border-border hover:border-primary/50'
-                            }`}
-                            onClick={() => handleExtensionToggle(extension)}
-                          >
+              {selectedTemplate && (() => {
+                const extensions = useExtensions(selectedTemplate.name);
+                if (extensions.length === 0) return null;
+                return (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Extensions ({selectedExtensions.length} selected)</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {extensions.map(extension => (
+                        <div
+                          key={extension.name}
+                          className={`flex flex-col gap-1 p-3 rounded-lg border cursor-pointer transition-colors min-h-[44px] ${
+                            selectedExtensions.includes(extension.name)
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                          onClick={() => handleExtensionToggle(extension.name)}
+                        >
+                          <div className="flex items-center gap-3">
                             <Checkbox
-                              checked={selectedExtensions.includes(extension)}
-                              onCheckedChange={() => handleExtensionToggle(extension)}
+                              checked={selectedExtensions.includes(extension.name)}
+                              onCheckedChange={() => handleExtensionToggle(extension.name)}
                             />
-                            <span className="text-sm flex-1">{extension}</span>
+                            <span className="text-sm font-medium flex-1">{extension.name}</span>
                           </div>
-                        ))}
-                      </div>
+                          {extension.image && (
+                            <img src={extension.image} alt="Extension" className="max-h-16 rounded" />
+                          )}
+                          {extension.description && (
+                            <div className="text-xs text-muted-foreground">{extension.description}</div>
+                          )}
+                          <div className="flex gap-2 text-xs text-muted-foreground">
+                            {extension.min_players && (
+                              <span>Min players: {extension.min_players}</span>
+                            )}
+                            {extension.max_players && (
+                              <span>Max players: {extension.max_players}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  );
-                })()
-              )}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 
