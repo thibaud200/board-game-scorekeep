@@ -42,6 +42,13 @@
   - Gestion limitée des capacités et descriptions
 - **Extensions**: Stockées en CSV sans métadonnées
   - Pas de validation des règles (ex: nombre de joueurs max)
+
+Sécurité et migrations
+ - Toutes les routes POST/PUT utilisent express-validator pour la validation des entrées.
+ - Les requêtes SQL sont paramétrées pour éviter l'injection.
+ - Les index sont ajoutés sur les colonnes de recherche fréquente.
+ - Les scripts de migration sont stockés dans migrations.
+
 -- Table des personnages structurée
 CREATE TABLE game_characters (
     id TEXT PRIMARY KEY,
@@ -635,70 +642,86 @@ interface CampaignProgress {
 - [ ] 0/1 système de cache local implémenté
 
 ### Phase 3 - Personnages par Jeu (PRIORITÉ #3)
-- [ ] 0/6 fichiers modifiés
-- [ ] 0/1 interface personnages avancée créée
-- [ ] 0/1 intégration avec nouvelle BDD testée
+**Dépriorisé : la gestion avancée des personnages (classes, capacités, import API, etc.) n'est pas prévue pour le moment.**
+Le texte et les exemples restent en fin de roadmap pour référence future.
 
-### Phase 4 - Localisation (PRIORITÉ #4)
-- [ ] 0/3 langues implémentées (FR, EN, DE)
-- [ ] 0/1 système i18n configuré
-- [ ] 0/XX composants traduits
+---
 
-### Phase 5 - Backup/Import BDD (PRIORITÉ #5)
-- [ ] 0/3 fichiers créés (BackupService, DatabaseBackup, endpoints)
-- [ ] 0/1 interface backup/restore créée
-- [ ] 0/1 système de migration automatique implémenté
+## 📦 Gestion avancée des personnages (dépriorisée)
 
-### Phase 6 - Score Compétitif Avancé (PRIORITÉ #6) - À détailler
-- [ ] 0/? fonctionnalités à définir
-- [ ] 0/? fichiers à créer/modifier
+Tout le texte, les exemples et les structures concernant la gestion avancée des personnages (classes, capacités, import API, etc.) sont conservés ici pour référence, mais ne sont pas prioritaires dans la feuille de route actuelle.
 
-### Phase 7 - Mode Campagne (PRIORITÉ #7) - À détailler
-- [ ] 0/? fonctionnalités à définir
-- [ ] 0/8 fichiers créés/modifiés estimés
+#### Objectifs:
+- Personnages avec classes, capacités, descriptions, images
+- Import depuis APIs (BoardGameGeek, IGDB, etc.)
+- Gestion avancée des capacités (conditions, effets, etc.)
 
-### Phase 8 - BGG Avancé (PRIORITÉ #8)
-- [ ] 0/4 services API avancés créés
-- [ ] 0/3 composants d'affichage enrichi créés
-- [ ] 0/1 système de cache robuste implémenté
+#### Structure de données:
+```typescript
+interface GameCharacter {
+  id: string
+  gameTemplate: string
+  name: string
+  classType: string // Métier/Classe (auto-rempli)
+  description?: string
+  abilities?: string[]
+  source: 'manual' | 'api_boardgamegeek'
+  externalId?: string
+}
 
-## 🔄 Notes de Développement
+interface Ability {
+  id: string
+  name: string
+  description: string
+  type: 'active' | 'passive'
+  effect: string // Effet en texte brut ou JSON
+  cooldown?: number // Tours avant réutilisation
+}
+```
 
-### Dépendances entre Phases (Nouvelle Organisation)
-- **Phase 1** (Refonte BDD) : Prérequis OBLIGATOIRE pour toutes les phases suivantes
-- **Phase 2** (BGG Final) : Dépend de Phase 1 pour stockage images/métadonnées
-- **Phase 3** (Personnages) : Dépend de Phases 1+2 pour personnages enrichis BGG
-- **Phase 4** (Localisation) : Indépendante, peut être développée en parallèle
-- **Phase 5** (Backup) : Dépend de Phase 1 pour inclure nouvelles tables
-- **Phase 6** (Score Compétitif) : Utilise la base existante + Phase 1
-- **Phase 7** (Campagne) : Dépend de Phase 3 (personnages avancés)
-- **Phase 8** (BGG Avancé) : Dépend de Phases 1+2+3
+#### Fichiers à modifier:
+- [ ] `src/App.tsx` - Nouvelles interfaces
+- [ ] `src/components/GameSetup.tsx` - Sélection personnages améliorée
+- [ ] `src/components/ActiveGame.tsx` - Affichage nom + classe
+- [ ] `src/lib/database.ts` - CRUD pour nouvelle table game_characters
+- [ ] `server.js` - Endpoints personnages
 
-### Considérations Techniques
-- Maintenir la compatibilité ascendante des données
-- Prévoir les migrations de base de données pour chaque phase
-- Conserver l'architecture modulaire actuelle
-- Tests unitaires pour chaque nouvelle fonctionnalité
-- **Phase 1 est critique** : Toute l'architecture future en dépend
+#### Exemples de Migration:
+```typescript
+// EXEMPLE: Migration d'un jeu existant
+// AVANT: game_templates.characters = "Barbare,Archer,Clerc,Mage"
+// APRÈS: 4 entrées dans game_characters
 
-### Prochaines Actions Recommandées
-1. **Commencer Phase 1** (Refonte BDD) - Critique pour tout le reste
-2. **Définir Phase 6** (Score Compétitif) selon vos besoins spécifiques
-3. **Définir Phase 7** (Mode Campagne) selon les jeux que vous utilisez
+const gloomhavenCharacters = [
+  {
+    id: 'gloomhaven-barbare-001',
+    game_template: 'Gloomhaven',
+    name: 'Barbare',
+    class_type: null,  // À remplir plus tard
+    source: 'migrated',
+    abilities: '[]'
+  },
+  {
+    id: 'gloomhaven-archer-002', 
+    game_template: 'Gloomhaven',
+    name: 'Archer',
+    class_type: null,
+    source: 'migrated',
+    abilities: '[]'
+  }
+]
+```
 
-## 🐛 Améliorations UX Mineures
-
-### Issues Connues à Corriger
-- **BGG Search Popup Clipping** : La fenêtre de suggestions BGG peut être coupée dans les Dialogs
-  - **Cause** : Overflow des DialogContent + z-index conflicts
-  - **Solutions** : Portal, Popover Radix UI, ou positionnement dynamique
-  - **Priorité** : Basse (amélioration cosmétique)
-
-### Points d'Attention
-- Performance avec des bases de données de personnages importantes
-- Interface utilisateur intuitive pour la sélection de personnages
-- Gestion des conflits entre modes (compétitif vs campagne)
-- Sauvegarde/restauration des campagnes en cours
+#### Validation et Tests:
+```typescript
+interface MigrationValidation {
+  // Vérifier que toutes les données CSV ont été converties
+  validateCharacterMigration(): Promise<ValidationResult>
+  
+  // Comparer les données avant/après
+  testNewDataStructure(): Promise<TestResult>
+}
+```
 
 ---
 

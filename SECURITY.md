@@ -45,9 +45,20 @@ Board Game Score Tracker handles:
 
 ### Current Security Measures
 
-- ✅ **Input validation** with Zod schemas
-- ✅ **CORS protection** for API endpoints
+
+### Current Security Measures
+
+- ✅ **Input validation** with express-validator (backend API)
+	- Toutes les routes POST/PUT utilisent express-validator pour vérifier et nettoyer les entrées utilisateur.
 - ✅ **SQL injection prevention** with parameterized queries
+	- Toutes les requêtes SQL utilisent des paramètres (jamais de concaténation directe).
+- ✅ **Database indexing**
+	- Index ajoutés sur les colonnes de recherche fréquente pour limiter les attaques par scan et améliorer la performance.
+- ✅ **Migration scripts**
+	- Les scripts de migration sont stockés dans `database/migrations` et doivent être appliqués manuellement pour garantir la cohérence du schéma.
+- ✅ **SQLite best practices**
+	- Ajout de colonnes via ALTER TABLE uniquement si la table existe, et une colonne à la fois.
+- ✅ **CORS protection** for API endpoints
 - ✅ **XSS protection** through React's built-in escaping
 - ✅ **Local-only operation** - No external data storage
 

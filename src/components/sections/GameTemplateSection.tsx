@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,7 @@ import { useDatabase } from '@/lib/database-context'
 import { useGameHistory } from '@/lib/database-hooks'
 import { toast } from 'sonner'
 import { BGGGameSearch } from '@/components/BGGGameSearch'
+import { getExtensionsForGame } from '@/lib/extensions-utils';
 
 interface GameTemplateSectionProps {
   gameTemplates: GameTemplate[]
@@ -25,8 +26,6 @@ interface DialogFormProps {
     name: string
     hasCharacters: boolean
     characters: string
-    hasExtensions: boolean
-    extensions: string
     supportsCooperative: boolean
     supportsCompetitive: boolean
     supportsCampaign: boolean
@@ -36,8 +35,6 @@ interface DialogFormProps {
     name: string
     hasCharacters: boolean
     characters: string
-    hasExtensions: boolean
-    extensions: string
     supportsCooperative: boolean
     supportsCompetitive: boolean
     supportsCampaign: boolean
@@ -76,7 +73,6 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
             
             // === ANALYSE INTELLIGENTE DES DONNÉES BGG ===
             const hasCharacters = gameData.characters.length > 0
-            const hasExtensions = gameData.expansions.length > 0
             
             // Analyse du type de jeu pour déterminer les modes supportés
             const categories = gameData.categories || []
@@ -125,20 +121,12 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
               .filter(char => !char.toLowerCase().includes('expansion')) // Éliminer les références aux extensions
               .slice(0, 20) // Limiter à 20 personnages max pour l'UI
             
-            // Extensions : exclure les réimpressions et variantes mineures
-            const cleanedExtensions = gameData.expansions
-              .filter(exp => exp.name && !exp.name.toLowerCase().includes('reprint'))
-              .filter(exp => !exp.name.toLowerCase().includes('edition'))
-              .slice(0, 10) // Limiter à 10 extensions max pour l'UI
-            
             // === MISE À JOUR DU FORMULAIRE ===
             setFormData(prev => ({
               ...prev,
               name: gameData.name,
               hasCharacters,
               characters: cleanedCharacters.join(', '),
-              hasExtensions,
-              extensions: cleanedExtensions.map(exp => exp.name).join(', '),
               supportsCooperative,
               supportsCompetitive,
               supportsCampaign,
@@ -181,29 +169,6 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
               placeholder="e.g., Wizard, Warrior, Thief"
               value={formData.characters}
               onChange={(e) => setFormData(prev => ({ ...prev, characters: e.target.value }))}
-            />
-          </div>
-        )}
-
-        {/* === SECTION EXTENSIONS === */}
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium">Has Extensions</label>
-          <Switch
-            checked={formData.hasExtensions}
-            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, hasExtensions: checked }))}
-          />
-        </div>
-
-        {formData.hasExtensions && (
-          <div>
-            <label className="text-sm font-medium flex items-center gap-1">
-              Extensions (comma-separated)
-              <span className="text-xs text-muted-foreground">(optional)</span>
-            </label>
-            <Input
-              placeholder="e.g., Base Game, Expansion 1, Expansion 2"
-              value={formData.extensions}
-              onChange={(e) => setFormData(prev => ({ ...prev, extensions: e.target.value }))}
             />
           </div>
         )}
@@ -322,8 +287,6 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
     name: '',
     hasCharacters: false,
     characters: '',
-    hasExtensions: false,
-    extensions: '',
     supportsCooperative: false,
     supportsCompetitive: false,
     supportsCampaign: false,
@@ -335,8 +298,6 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       name: '',
       hasCharacters: false,
       characters: '',
-      hasExtensions: false,
-      extensions: '',
       supportsCooperative: false,
       supportsCompetitive: false,
       supportsCampaign: false,
@@ -351,8 +312,6 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       name: template.name,
       hasCharacters: template.hasCharacters,
       characters: template.characters?.join(', ') || '',
-      hasExtensions: template.hasExtensions,
-      extensions: template.extensions?.join(', ') || '',
       supportsCooperative: template.supportsCooperative || false,
       supportsCompetitive: template.supportsCompetitive || false,
       supportsCampaign: template.supportsCampaign || false,
@@ -386,10 +345,6 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       hasCharacters: formData.hasCharacters,
       characters: formData.hasCharacters && formData.characters.trim() 
         ? formData.characters.split(',').map(s => s.trim()).filter(s => s)
-        : undefined,
-      hasExtensions: formData.hasExtensions,
-      extensions: formData.hasExtensions && formData.extensions.trim()
-        ? formData.extensions.split(',').map(s => s.trim()).filter(s => s)
         : undefined,
       supportsCooperative: formData.supportsCooperative,
       supportsCompetitive: formData.supportsCompetitive,
@@ -457,6 +412,36 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       setShowAddDialog(false)
     }
     resetForm()
+  }
+
+  // New component to display extensions from the new table
+  function ExtensionsDisplay({ baseGameName }: { baseGameName: string }) {
+    const [extensions, setExtensions] = useState<string[]>([]);
+    const { db } = useDatabase();
+
+    useEffect(() => {
+      if (!db || !baseGameName) {
+        setExtensions([]);
+        return;
+      }
+      getExtensionsForGame(db, baseGameName).then(setExtensions).catch(() => setExtensions([]));
+    }, [db, baseGameName]);
+
+    if (!baseGameName) return null;
+    return (
+      <div className="mt-2">
+        <label className="text-sm font-medium flex items-center gap-1">Extensions</label>
+        {extensions.length === 0 ? (
+          <span className="text-xs text-muted-foreground">No extensions found for this game.</span>
+        ) : (
+          <ul className="list-disc ml-4">
+            {extensions.map(ext => (
+              <li key={ext}>{ext}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -568,12 +553,6 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
                             Characters
                           </Badge>
                         )}
-                        {template.hasExtensions && (
-                          <Badge variant="outline" className="text-xs">
-                            <Package size={10} className="mr-1" />
-                            Extensions
-                          </Badge>
-                        )}
                       </div>
 
                       {/* Quick Stats */}
@@ -625,7 +604,7 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
                                         <div key={game.id} className="flex justify-between items-center p-2 border rounded">
                                           <div>
                                             <div className="text-xs text-muted-foreground">
-                                              {new Date(game.startTime).toLocaleDateString()}
+                                              {game.startTime ? new Date(game.startTime).toLocaleDateString() : ''}
                                             </div>
                                             <div className="flex items-center gap-1 mt-1">
                                               <span className="text-sm">{game.players.length} players</span>

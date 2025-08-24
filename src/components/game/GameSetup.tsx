@@ -1,15 +1,15 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Play, Users, GameController, Clock, Trophy, Bookmark, Asterisk } from '@phosphor-icons/react'
-import { Player, GameSession, GameTemplate } from '@/App'
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Play, Users, GameController, Clock, Trophy, Bookmark, Asterisk } from '@phosphor-icons/react';
+import { Player, GameSession, GameTemplate } from '@/App';
 
 interface GameSetupProps {
   players: Player[]
@@ -156,6 +156,22 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
       .join('')
       .toUpperCase()
       .slice(0, 2)
+  }
+
+  // --- Extensions fetcher ---
+  function useExtensions(baseGameName: string) {
+    const [extensions, setExtensions] = useState<string[]>([]);
+    useEffect(() => {
+      if (!baseGameName) {
+        setExtensions([]);
+        return;
+      }
+      fetch(`/api/extensions/${encodeURIComponent(baseGameName)}`)
+        .then(res => res.json())
+        .then(data => setExtensions(data.map((ext: any) => ext.name)))
+        .catch(() => setExtensions([]));
+    }, [baseGameName]);
+    return extensions;
   }
 
   return (
@@ -329,29 +345,35 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                 </div>
               )}
 
-              {selectedTemplate?.hasExtensions && selectedTemplate.extensions && (
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">Extensions ({selectedExtensions.length} selected)</Label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {selectedTemplate.extensions.map(extension => (
-                      <div
-                        key={extension}
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors min-h-[44px] ${
-                          selectedExtensions.includes(extension)
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                        onClick={() => handleExtensionToggle(extension)}
-                      >
-                        <Checkbox
-                          checked={selectedExtensions.includes(extension)}
-                          onCheckedChange={() => handleExtensionToggle(extension)}
-                        />
-                        <span className="text-sm flex-1">{extension}</span>
+              {selectedTemplate && (
+                (() => {
+                  const extensions = useExtensions(selectedTemplate.name);
+                  if (extensions.length === 0) return null;
+                  return (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Extensions ({selectedExtensions.length} selected)</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {extensions.map(extension => (
+                          <div
+                            key={extension}
+                            className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors min-h-[44px] ${
+                              selectedExtensions.includes(extension)
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/50'
+                            }`}
+                            onClick={() => handleExtensionToggle(extension)}
+                          >
+                            <Checkbox
+                              checked={selectedExtensions.includes(extension)}
+                              onCheckedChange={() => handleExtensionToggle(extension)}
+                            />
+                            <span className="text-sm flex-1">{extension}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                  );
+                })()
               )}
             </CardContent>
           </Card>

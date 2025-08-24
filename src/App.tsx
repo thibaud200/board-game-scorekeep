@@ -31,42 +31,45 @@ export interface CharacterEvent {
   }
 }
 
-export interface GameSession {
-  id: string
-  gameTemplate: string
-  gameType?: string // Added for backward compatibility
-  players: string[]
-  scores: Record<string, number>
-  startTime: string
-  endTime?: string
-  duration?: string | number // Allow both string and number
-  date?: string // Added missing date property
-  gameMode: 'cooperative' | 'competitive' | 'campaign'
-  isCooperative: boolean // Deprecated: keep for backward compatibility
-  cooperativeResult?: 'victory' | 'defeat'
-  characters?: Record<string, Character | string>
-  characterHistory?: CharacterEvent[]
-  allowResurrection?: boolean
-  completed?: boolean // Added missing completed property
-  winner?: string // Added missing winner property
-  winCondition?: 'highest' | 'lowest' | 'cooperative' // Added 'cooperative' option
-  extensions?: string[] // Added missing extensions property
-  deadCharacters?: Record<string, boolean> // Added missing deadCharacters property
-  newCharacterNames?: Record<string, string> // Added missing newCharacterNames property
+export interface GameExtension {
+  id: string;
+  name: string;
+  base_game_name: string;
+  description?: string;
 }
 
 export interface GameTemplate {
-  name: string
-  hasCharacters: boolean
-  characters?: string[]
-  hasExtensions: boolean
-  extensions?: string[]
-  // Game modes that this template supports (can be combined)
-  supportsCooperative: boolean
-  supportsCompetitive: boolean
-  supportsCampaign: boolean
-  // Default mode when creating a new game with this template
-  defaultMode: 'cooperative' | 'competitive' | 'campaign'
+  name: string;
+  hasCharacters: boolean;
+  characters?: string[];
+  supportsCooperative: boolean;
+  supportsCompetitive: boolean;
+  supportsCampaign: boolean;
+  defaultMode: 'cooperative' | 'competitive' | 'campaign';
+}
+
+export interface GameSession {
+  id: string;
+  gameTemplate: string;
+  gameMode: 'cooperative' | 'competitive' | 'campaign';
+  isCooperative: boolean;
+  allowResurrection?: boolean;
+  players: string[];
+  scores: Record<string, number>;
+  characters?: Record<string, { name?: string; type?: string }>;
+
+  extensions?: string[]; // Array of extension names
+  startTime?: string;
+  winner?: string;
+  winCondition?: 'highest' | 'lowest' | 'cooperative';
+  date?: string;
+  endTime?: string;
+  duration?: number;
+  completed?: boolean;
+  cooperativeResult?: string;
+  deadCharacters?: string[];
+  newCharacterNames?: string[];
+  characterHistory?: any[];
 }
 
 function AppContent() {

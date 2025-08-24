@@ -70,7 +70,7 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
   const averageDuration = totalGames > 0 ? Math.round(totalDuration / totalGames) : 0
 
   // Game types played
-  const gameTypes = [...new Set(playerGames.map(game => game.gameType))]
+  const gameTypes = [...new Set(playerGames.map(game => game.gameTemplate))]
 
   const GameDetailDialog = ({ game }: { game: GameSession }) => {
     const winner = game.winner ? gameHistory.find(g => g.players.includes(game.winner!)) : null
@@ -84,13 +84,13 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GameController size={20} />
-            {game.gameType}
+            {game.gameTemplate}
           </DialogTitle>
           <DialogDescription>
             Detailed view of this game session
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {/* Game Info */}
           <div className="grid grid-cols-2 gap-4">
@@ -115,6 +115,18 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
               </div>
             )}
           </div>
+
+          {/* Extensions utilisées */}
+          {Array.isArray(game.extensions) && game.extensions.length > 0 && (
+            <div>
+              <div className="text-sm text-muted-foreground mb-1">Extensions utilisées</div>
+              <div className="flex flex-wrap gap-2">
+                {game.extensions.map((ext, idx) => (
+                  <Badge key={idx} variant="outline">{ext}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Character History */}
           {game.characterHistory && game.characterHistory.length > 0 && (
@@ -330,7 +342,7 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
         <CardContent>
           <div className="flex flex-wrap gap-2">
             {gameTypes.map(gameType => {
-              const gameCount = playerGames.filter(g => g.gameType === gameType).length
+              const gameCount = playerGames.filter(g => g.gameTemplate === gameType).length
               return (
                 <Badge key={gameType} variant="outline">
                   {gameType} ({gameCount})
@@ -359,7 +371,7 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
                   <div className="flex items-center gap-4">
                     <div>
                       <div className="font-medium flex items-center gap-2">
-                        {game.gameType}
+                        {game.gameTemplate}
                         {(isWinner || isCoopVictory) && <Trophy size={16} className="text-yellow-500" />}
                         {isDead && <Skull size={16} className="text-red-500" />}
                       </div>
