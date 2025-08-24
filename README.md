@@ -9,11 +9,12 @@
 
 ## 🎯 Vue d'ensemble
 
-Board Game Score Tracker est une application web moderne et intuitive pour gérer vos sessions de jeux de société. Elle offre un suivi complet des parties avec support multi-modes (coopératif, compétitif, campagne), gestion avancée des personnages, et statistiques détaillées.
+Board Game Score Tracker est une application web moderne et intuitive pour gérer vos sessions de jeux de société. Elle offre un suivi complet des parties avec support multi-modes (coopératif, compétitif, campagne), gestion avancée des personnages, gestion des extensions, et statistiques détaillées.
 
 ### ✨ Fonctionnalités principales
 
 - 🎮 **Multi-modes de jeu** : Support coopératif, compétitif et campagne
+- 🧩 **Extensions de jeux** : Ajout, gestion et affichage des extensions utilisées pour chaque session
 - � **Intégration BoardGameGeek** : Auto-import intelligent de données de jeux avec analyse de modes
 - �👥 **Gestion des personnages** : Suivi des personnages avec historique complet
 - 📊 **Statistiques avancées** : Analytics détaillées par joueur et par jeu
@@ -72,6 +73,7 @@ L'application est prête ! 🎉
 | **Styling** | Tailwind CSS + Radix UI | 3.4 |
 | **Backend** | Express.js | 5.x |
 | **Base de données** | SQLite + better-sqlite3 | 3.x |
+| **Extensions** | Table game_extensions + affichage UI | 1.0 |
 | **API externe** | BoardGameGeek XML API | 2.0 |
 | **Build** | Vite | 6.x |
 | **Tests** | Jest + React Testing Library | 30.x |

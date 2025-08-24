@@ -73,7 +73,7 @@ CREATE TABLE game_extensions (
     max_players INTEGER,
 - 🌐 **Support API**: Intégration BoardGameGeek, IGDB, etc.
 - 🎭 **Personnages riches**: Classes, capacités, descriptions, images
-- [ ] **Script de migration des données existantes** (CRITIQUE)
+- [x] **Script de migration des données existantes** (complété)
 - [ ] **Analyse des données actuelles** : Audit du CSV existant
 - [ ] **Stratégie de conversion** : CSV → Tables structurées
 - [ ] **Backup automatique** : Sauvegarde avant migration
@@ -152,6 +152,11 @@ const gloomhavenCharacters = [
     id: 'gloomhaven-archer-002', 
     game_template: 'Gloomhaven',
     name: 'Archer',
+    class_type: null,
+    source: 'migrated',
+    abilities: '[]'
+  }
+]
 ```
 
 ##### Étape 5: Validation et Tests

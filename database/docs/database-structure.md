@@ -68,7 +68,7 @@ CREATE TABLE game_sessions (
 | `players` | TEXT | JSON array des IDs de joueurs |
 | `scores` | TEXT | JSON object des scores par joueur |
 | `characters` | TEXT | JSON object des personnages assignés |
-| `extensions` | TEXT | JSON array des extensions utilisées |
+| `extensions` | TEXT | JSON array des extensions utilisées (affichées dans l'UI session et stats joueur) |
 | `winner` | TEXT | ID du joueur gagnant (si compétitif) |
 | `win_condition` | TEXT | Condition de victoire utilisée |
 | `date` | TEXT | Date de la partie (format ISO) |
@@ -192,18 +192,11 @@ CREATE TABLE game_characters (
 ```sql
 CREATE TABLE game_extensions (
     id TEXT PRIMARY KEY,
-    game_template TEXT NOT NULL,
     name TEXT NOT NULL,
+    base_game_name TEXT NOT NULL,
     description TEXT,
-    min_players INTEGER,
-    max_players INTEGER,
-    adds_characters INTEGER DEFAULT 0,
-    adds_mechanics TEXT,    -- JSON array des nouvelles mécaniques
-    image_url TEXT,
-    source TEXT,           -- 'manual', 'api_boardgamegeek', etc.
-    external_id TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (game_template) REFERENCES game_templates(name)
+    FOREIGN KEY (base_game_name) REFERENCES game_templates(name)
 );
 ```
 
