@@ -42,10 +42,6 @@
   - Gestion limitée des capacités et descriptions
 - **Extensions**: Stockées en CSV sans métadonnées
   - Pas de validation des règles (ex: nombre de joueurs max)
-  - Impossible de gérer les contraintes (jeu pour 4 → extension permet 5 joueurs)
-
-#### Nouvelles Tables Nécessaires:
-```sql
 -- Table des personnages structurée
 CREATE TABLE game_characters (
     id TEXT PRIMARY KEY,
@@ -68,43 +64,16 @@ CREATE TABLE game_extensions (
     description TEXT,
     min_players INTEGER,    -- Contraintes de joueurs
     max_players INTEGER,
-    adds_characters INTEGER DEFAULT 0,
-    adds_mechanics TEXT,    -- JSON array des nouvelles mécaniques
-    image_url TEXT,
-    source TEXT,
-    external_id TEXT,
-    FOREIGN KEY (game_template) REFERENCES game_templates(name)
-);
-```
-
-#### Avantages de la Refonte:
 - 🌐 **Support API**: Intégration BoardGameGeek, IGDB, etc.
 - 🎭 **Personnages riches**: Classes, capacités, descriptions, images
-- 📦 **Extensions intelligentes**: Validation des contraintes de joueurs
-- 🔍 **Recherche avancée**: Filtrage par capacités, classes, etc.
-- 📊 **Analytics améliorées**: Statistiques par personnage/extension
-
-#### Migration Planifiée:
 - [ ] **Script de migration des données existantes** (CRITIQUE)
 - [ ] **Analyse des données actuelles** : Audit du CSV existant
 - [ ] **Stratégie de conversion** : CSV → Tables structurées
 - [ ] **Backup automatique** : Sauvegarde avant migration
 - [ ] **Tests de migration** : Validation des données converties
 - [ ] **Rollback plan** : Restauration en cas d'échec
-- [ ] Nouveaux endpoints API pour personnages et extensions
-- [ ] Interface de gestion avancée des personnages
-- [ ] Validation des contraintes d'extensions
-- [ ] Tests de compatibilité ascendante
-
-#### 🔄 Plan de Migration Détaillé
 
 ##### Étape 1: Analyse des Données Existantes
-```sql
--- Analyser les données actuelles dans game_templates
-SELECT 
-  name as game_name,
-  characters,  -- CSV format actuel
-  extensions   -- CSV format actuel
 FROM game_templates 
 WHERE characters IS NOT NULL 
    OR extensions IS NOT NULL;
@@ -140,23 +109,8 @@ CREATE TABLE game_templates (
   characters TEXT,  -- CSV: "Héros,Voleur,Mage"
   extensions TEXT   -- CSV: "Extension 1,Extension 2"
   -- autres colonnes...
-);
-
--- APRÈS (v1.1)
-CREATE TABLE game_templates (
-  name TEXT PRIMARY KEY,
-  characters TEXT,  -- DEPRECATED, gardé pour compatibilité
-  extensions TEXT,  -- DEPRECATED, gardé pour compatibilité
-  has_detailed_characters BOOLEAN DEFAULT FALSE
-  -- autres colonnes...
-);
 
 CREATE TABLE game_characters (
-  id TEXT PRIMARY KEY,
-  game_template TEXT NOT NULL,
-  name TEXT NOT NULL,               -- "Héros" extrait du CSV
-  class_type TEXT,                  -- NULL initialement, à remplir manuellement
-  description TEXT,                 -- NULL initialement
   abilities TEXT,                   -- JSON array, vide initialement
   image_url TEXT,                   -- NULL, à remplir via BGG
   source TEXT DEFAULT 'migrated',   -- Marqué comme données migrées
@@ -164,16 +118,8 @@ CREATE TABLE game_characters (
   FOREIGN KEY (game_template) REFERENCES game_templates(name)
 );
 
-CREATE TABLE game_extensions (
-  id TEXT PRIMARY KEY,
-  game_template TEXT NOT NULL,
-  name TEXT NOT NULL,               -- "Extension 1" extrait du CSV
   description TEXT,                 -- NULL initialement
   min_players INTEGER,              -- NULL, à définir manuellement
-  max_players INTEGER,              -- NULL, à définir manuellement
-  adds_characters INTEGER DEFAULT 0, -- 0 par défaut
-  adds_mechanics TEXT,              -- JSON array vide
-  image_url TEXT,                   -- NULL, à remplir via BGG
   source TEXT DEFAULT 'migrated',   -- Marqué comme données migrées
   external_id TEXT,                 -- NULL initialement
   FOREIGN KEY (game_template) REFERENCES game_templates(name)
@@ -199,12 +145,6 @@ const gloomhavenCharacters = [
     id: 'gloomhaven-archer-002', 
     game_template: 'Gloomhaven',
     name: 'Archer',
-    class_type: null,
-    source: 'migrated',
-    abilities: '[]'
-  }
-  // ... etc
-];
 ```
 
 ##### Étape 5: Validation et Tests
@@ -212,79 +152,32 @@ const gloomhavenCharacters = [
 interface MigrationValidation {
   // Vérifier que toutes les données CSV ont été converties
   validateCharacterMigration(): Promise<ValidationResult>
-  validateExtensionMigration(): Promise<ValidationResult>
-  
-  // Vérifier l'intégrité référentielle
-  validateForeignKeys(): Promise<ValidationResult>
   
   // Comparer les données avant/après
-  compareDataIntegrity(): Promise<ComparisonResult>
-  
-  // Tests de fonctionnement avec les nouvelles structures
   testNewDataStructure(): Promise<TestResult>
 }
 ```
 
-##### Étape 6: Plan de Rollback
-```sql
--- Si la migration échoue, restaurer l'état précédent
--- Supprimer les nouvelles tables
-DROP TABLE IF EXISTS game_characters;
-DROP TABLE IF EXISTS game_extensions;
-
--- Restaurer game_templates depuis backup
 -- Le backup sera automatiquement créé avant migration
 ```
-
-#### 📋 Checklist de Migration
-- [ ] **Backup automatique** des données actuelles
 - [ ] **Parser CSV** des personnages existants  
 - [ ] **Parser CSV** des extensions existantes
-- [ ] **Créer nouvelles tables** avec contraintes
-- [ ] **Convertir et insérer** données personnages
-- [ ] **Convertir et insérer** données extensions
 - [ ] **Valider intégrité** des données migrées
 - [ ] **Tests fonctionnels** avec nouvelles structures
-- [ ] **Marquer colonnes legacy** comme deprecated
-- [ ] **Documentation** du processus de migration
-
 #### ⚠️ Risques et Mitigation
 - **Perte de données** → Backup automatique obligatoire
-- **Parsing CSV incorrect** → Tests sur données réelles d'abord
-- **Contraintes violées** → Validation avant insertion
-- **Performance** → Migration par batch si volume important
 - **Rollback nécessaire** → Script de restauration automatique
 
-### Phase 2: � Finalisation Intégration BGG
-**Statut**: 🔄 Planifié - **PRIORITÉ #2** (dépend de Phase 1)
 **Priorité**: Haute
 
-#### Améliorations Basées sur la Nouvelle BDD:
-- [ ] **Images BGG** : Stockage des images dans `image_url` des nouvelles tables
 - [ ] **Cache local** : Stockage des résultats de recherche BGG
 - [ ] **Sync périodique** : Mise à jour automatique des données BGG
-- [ ] **Import personnages structuré** : Utilisation de la table `game_characters`
-- [ ] **Import extensions enrichi** : Utilisation de la table `game_extensions`
-- [ ] **Amélioration UI** : Popup de suggestions qui ne se coupe plus dans les dialogs
 
 #### ✅ Déjà Implémenté:
 - [x] Service BGGService.ts avec XML parsing
 - [x] Composant BGGGameSearch avec auto-complétion
-- [x] Proxy Express pour contourner CORS
-- [x] Analyse intelligente des modes basée sur mécaniques
-- [x] Import automatique personnages/extensions (CSV basique)
-- [x] Intégration complète dans GameTemplateSection
-
-### Phase 3: 🎭 Gestion des Personnages par Jeu
-**Statut**: 🔄 Planifié - **PRIORITÉ #3** (dépend de Phases 1+2)
-**Priorité**: Haute
 
 #### Objectifs:
-- Base de données des personnages par jeu (utilise la nouvelle table `game_characters`)
-- Sélection automatique selon le template
-- Interface : Liste déroulante (nom) + Champ grisé (métier/classe)
-- Filtrage automatique des personnages disponibles
-
 #### Structure de données:
 ```typescript
 interface GameCharacter {
@@ -294,38 +187,22 @@ interface GameCharacter {
   classType: string // Métier/Classe (auto-rempli)
   description?: string
   abilities?: string[]
-  imageUrl?: string
   source: 'manual' | 'api_boardgamegeek'
   externalId?: string
 }
 
 interface GameTemplate {
-  // Ajout
-  hasDetailedCharacters?: boolean // true si personnages prédéfinis
-  characterClasses?: GameCharacter[] // Liste complète depuis BDD
-}
 ```
-
 #### Fichiers à modifier:
 - [ ] `src/App.tsx` - Nouvelles interfaces
 - [ ] `src/components/GameSetup.tsx` - Sélection personnages améliorée
 - [ ] `src/components/ActiveGame.tsx` - Affichage nom + classe
 - [ ] `src/lib/database.ts` - CRUD pour nouvelle table game_characters
 - [ ] `server.js` - Endpoints personnages
-- [ ] Tests unitaires pour la gestion personnages
-
-### Phase 4: 🌍 Localisation et Internationalisation
-**Statut**: 🔄 Planifié - **PRIORITÉ #4**
 **Priorité**: Moyenne (Enhancement)
 
 #### Objectifs:
 - Support multilingue (Français, Anglais, Allemand)
-- Adaptation des formats de date/nombre selon la locale
-- Interface traduite pour tous les composants
-- Noms de jeux en multiple langues
-
-#### Technologies:
-- **react-i18next** pour la gestion des traductions
 - Fichiers JSON pour les chaînes de caractères
 - Détection automatique de la langue du navigateur
 - Stockage de la préférence utilisateur

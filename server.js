@@ -14,6 +14,8 @@ const PORT = 3001
 // Créer la base de données dans le répertoire du projet
 const dbPath = path.join(__dirname, 'database', 'board-game-tracker.db')
 const db = new Database(dbPath)
+const distPath = path.join(__dirname, 'dist');
+app.use(express.static(distPath));
 
 // Configuration CORS et middleware
 app.use(cors())
@@ -331,7 +333,15 @@ app.put('/api/current-game', (req, res) => {
 })
 
 // Démarrer le serveur
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🗄️  Base de données SQLite créée dans: ${dbPath}`)
   console.log(`🚀 Serveur API démarré sur http://localhost:${PORT}`)
 })
+
+// ...routes API et autres...
+
+// Place cette route tout en bas du fichier, après toutes les routes API :
+// Fallback SPA pour toutes les routes non gérées
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});

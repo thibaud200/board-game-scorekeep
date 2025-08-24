@@ -24,6 +24,7 @@
  */
 
 import React from 'react'
+import '@testing-library/jest-dom'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../../src/App' // Chemin relatif
@@ -158,28 +159,27 @@ describe('BGG Integration - Tests d\'Intégration', () => {
     // Mock des appels API serveur
     mockFetch.mockImplementation((url) => {
       const urlString = url.toString()
-      
+      // Ajout d'un log pour vérifier que l'API est toujours appelée
+      // eslint-disable-next-line no-console
+      console.log('API call:', urlString)
       if (urlString.includes('/api/templates')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([])
         } as Response)
       }
-      
       if (urlString.includes('/api/players')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([])
         } as Response)
       }
-      
       if (urlString.includes('/api/sessions')) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve([])
         } as Response)
       }
-      
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({})
@@ -544,6 +544,60 @@ describe('BGG Integration - Tests d\'Intégration', () => {
   })
 
   describe('Persistence et État', () => {
+    it('should fallback to localStorage if API fails', async () => {
+      // Arrange
+      // Simule une erreur API
+      mockFetch.mockImplementationOnce(() => Promise.resolve({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        headers: new Headers(),
+        redirected: false,
+        type: 'basic',
+        url: '',
+        clone: () => undefined,
+        body: null,
+        bodyUsed: false,
+        arrayBuffer: async () => new ArrayBuffer(0),
+        blob: async () => new Blob(),
+        formData: async () => new FormData(),
+        json: async () => ({}),
+        text: async () => '',
+      } as unknown as Response))
+      // Mock localStorage
+      const localPlayers = [{ id: 1, name: 'OfflinePlayer' }]
+      jest.spyOn(window.localStorage.__proto__, 'getItem').mockImplementation((key) => {
+        if (key === 'players') return JSON.stringify(localPlayers)
+        return null
+      })
+      // Mock du contexte database pour simuler une erreur sur getPlayers
+      jest.mock('../../src/lib/database-context', () => ({
+        DatabaseProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+        useDatabase: () => ({
+          db: {
+            getPlayers: jest.fn().mockRejectedValue(new Error('API fail')),
+            addPlayer: jest.fn(),
+            updatePlayer: jest.fn(),
+            deletePlayer: jest.fn()
+          },
+          isLoading: false,
+          error: null
+        })
+      }))
+      const user = userEvent.setup()
+      render(<App />)
+      // Act
+      const gameTemplatesElement = screen.getByText(/Game Templates/i)
+      const gameTemplatesCard = gameTemplatesElement.closest('[data-slot="card"]')
+      if (!gameTemplatesCard) throw new Error('Could not find Game Templates card')
+      await user.click(gameTemplatesCard)
+      // Assert - Vérifie que les données locales sont utilisées
+      await waitFor(() => {
+        expect(screen.getByText('OfflinePlayer')).toBeInTheDocument()
+      })
+      // Nettoyage du mock
+      jest.restoreAllMocks()
+    })
     it('should maintain form state during BGG interactions', async () => {
       // Arrange
       const user = userEvent.setup()

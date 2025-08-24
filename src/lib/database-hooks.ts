@@ -9,12 +9,32 @@ export function usePlayers() {
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshPlayers = async () => {
-    if (!db) return
+    if (!db) {
+      // Si pas de db, fallback localStorage direct
+      const local = window.localStorage.getItem('players')
+      if (local) {
+        setPlayers(JSON.parse(local))
+        console.warn('Fallback localStorage activé pour les joueurs (pas de db).')
+      } else {
+        setPlayers([])
+      }
+      setIsLoading(false)
+      return
+    }
     try {
+      // Toujours tenter la BDD/API d'abord
       const data = await db.getPlayers()
       setPlayers(data)
     } catch (error) {
-      console.error('Failed to load players:', error)
+      console.error('Failed to load players from BDD/API:', error)
+      // Fallback localStorage uniquement si la BDD/API échoue
+      const local = window.localStorage.getItem('players')
+      if (local) {
+        setPlayers(JSON.parse(local))
+        console.warn('Fallback localStorage activé pour les joueurs.')
+      } else {
+        setPlayers([])
+      }
     } finally {
       setIsLoading(false)
     }

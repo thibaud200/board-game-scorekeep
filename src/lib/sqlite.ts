@@ -91,6 +91,7 @@ export class SQLiteDatabase implements Database {
         has_extensions BOOLEAN NOT NULL,
         extensions TEXT,
         is_cooperative_by_default BOOLEAN NOT NULL
+    , base_game_name TEXT -- NULL si jeu de base, sinon nom du jeu de base
       )
     `)
 
