@@ -85,15 +85,21 @@ CREATE TABLE game_sessions (
 
 ```sql
 CREATE TABLE game_templates (
-    name TEXT PRIMARY KEY,
-    has_characters INTEGER DEFAULT 0,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    has_characters BOOLEAN NOT NULL,
     characters TEXT,
-    has_extensions INTEGER DEFAULT 0,
-    extensions TEXT,
-    supports_cooperative INTEGER DEFAULT 0,
-    supports_competitive INTEGER DEFAULT 1,
-    supports_campaign INTEGER DEFAULT 0,
-    default_mode TEXT DEFAULT 'competitive',
+    is_cooperative_by_default BOOLEAN NOT NULL,
+    base_game_name TEXT,
+    min_players INTEGER,
+    max_players INTEGER,
+    description TEXT,
+    image TEXT,
+    id_bgg TEXT,
+    supports_cooperative BOOLEAN,
+    supports_competitive BOOLEAN,
+    supports_campaign BOOLEAN,
+    default_mode TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -102,15 +108,22 @@ CREATE TABLE game_templates (
 
 | Colonne | Type | Description |
 |---------|------|-------------|
-| `name` | TEXT | Nom du jeu (clé primaire) |
-| `has_characters` | INTEGER | 1 si le jeu a des personnages |
-| `characters` | TEXT | Liste des personnages (format CSV) |
-| `has_extensions` | INTEGER | 1 si le jeu a des extensions |
-| `extensions` | TEXT | Liste des extensions (format CSV) |
-| `supports_cooperative` | INTEGER | 1 si supporte le mode coopératif |
-| `supports_competitive` | INTEGER | 1 si supporte le mode compétitif |
-| `supports_campaign` | INTEGER | 1 si supporte le mode campagne |
+| `id` | INTEGER | Clé primaire auto-incrémentée |
+| `name` | TEXT | Nom du jeu (unique, non null) |
+| `has_characters` | BOOLEAN | 1 si le jeu a des personnages |
+| `characters` | TEXT | Liste des personnages (JSON) |
+| `is_cooperative_by_default` | BOOLEAN | 1 si le jeu est coopératif par défaut |
+| `base_game_name` | TEXT | Nom du jeu de base (si extension) |
+| `min_players` | INTEGER | Nombre minimum de joueurs |
+| `max_players` | INTEGER | Nombre maximum de joueurs |
+| `description` | TEXT | Description du jeu |
+| `image` | TEXT | URL ou chemin de l'image |
+| `id_bgg` | TEXT | Identifiant BoardGameGeek (optionnel) |
+| `supports_cooperative` | BOOLEAN | 1 si supporte le mode coopératif |
+| `supports_competitive` | BOOLEAN | 1 si supporte le mode compétitif |
+| `supports_campaign` | BOOLEAN | 1 si supporte le mode campagne |
 | `default_mode` | TEXT | Mode par défaut du jeu |
+| `created_at` | DATETIME | Date de création du template |
 
 ### 4. ⚡ `current_game` - Partie en Cours
 
@@ -234,7 +247,7 @@ WHERE game_type NOT IN (SELECT name FROM game_templates);
 ```sql
 -- Nombre total de parties par jeu
 SELECT game_type, COUNT(*) as total_games 
-FROM game_sessions 
+    created_at DATETIME  -- Date de création du template (remplie à l'insertion, pas de DEFAULT via ALTER TABLE)
 WHERE completed = 1 
 GROUP BY game_type 
 ORDER BY total_games DESC;

@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Play, Users, GameController, Clock, Trophy, Bookmark, Asterisk } from '@phosphor-icons/react';
-import type { Player, GameSession, GameTemplate } from '../../App';
+import type { GameTemplate } from '@/types';
+import type { Player, GameSession } from '@/App';
 
 interface GameSetupProps {
   players: Player[]
@@ -42,8 +43,11 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
     const template = gameTemplates.find(t => t.name === value)
     if (template) {
       // Set default mode from template
-      const defaultMode = template.defaultMode || 'competitive'
-      setGameMode(defaultMode)
+      const allowedModes = ['cooperative', 'competitive', 'campaign'] as const;
+      const defaultMode = allowedModes.includes(template.defaultMode as any)
+        ? template.defaultMode
+        : 'competitive';
+      setGameMode(defaultMode as 'cooperative' | 'competitive' | 'campaign');
       setIsCooperative(defaultMode === 'cooperative')
       setWinCondition(defaultMode === 'cooperative' ? 'cooperative' : 'highest')
       setSelectedExtensions([])

@@ -1,17 +1,4 @@
-export interface GameTemplate {
-  name: string
-  hasCharacters: boolean
-  characters?: string[]
-  isCooperativeByDefault?: boolean
-  supportsCooperative?: boolean
-  supportsCompetitive?: boolean
-  supportsCampaign?: boolean
-  defaultMode?: 'cooperative' | 'competitive' | 'campaign'
-  min_players?: number
-  max_players?: number
-  description?: string
-  image?: string
-}
+import { GameTemplate } from '@/types'
 import { useState } from 'react'
 import { Toaster } from '@/components/ui/sonner'
 import { GameSetup } from '@/components/game/GameSetup'

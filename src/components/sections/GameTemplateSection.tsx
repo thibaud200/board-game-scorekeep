@@ -8,12 +8,15 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ArrowLeft, Plus, GameController, Trash, PencilSimple, ChartBar, Users, PersonSimple, Package, Asterisk } from '@phosphor-icons/react'
-import type { GameTemplate, GameSession } from '../../App'
+import type { GameTemplate } from '@/types'
 import { useDatabase } from '@/lib/database-context'
 import { useGameHistory } from '@/lib/database-hooks'
 import { toast } from 'sonner'
 import { BGGGameSearch } from '@/components/BGGGameSearch'
 import { getExtensionsForGame } from '@/lib/extensions-utils';
+import { useGameTemplates } from '@/lib/database-hooks';
+import { logger } from '@/lib/logger';
+import { generateId } from '@/lib/database';
 
 interface GameTemplateSectionProps {
   gameTemplates: GameTemplate[]
@@ -69,7 +72,7 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
           key={`bgg-search-${formResetKey}`} // Force re-render avec compteur pour reset
           onGameNameChange={(name) => setFormData(prev => ({ ...prev, name }))}
           onGameImport={(gameData) => {
-            console.log('Import BGG Game Data:', gameData) // Debug log
+            logger.debug('Import BGG Game Data: ' + JSON.stringify(gameData));
             
             // === ANALYSE INTELLIGENTE DES DONNÉES BGG ===
             const hasCharacters = gameData.characters.length > 0
@@ -138,13 +141,13 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
             }))
             
             // Log pour debugging et monitoring de l'analyse intelligente
-            console.log('Auto-detected game modes:', {
+            logger.info('Auto-detected game modes: ' + JSON.stringify({
               supportsCooperative,
               supportsCompetitive,
               supportsCampaign,
               defaultMode,
               basedOn: { categories, mechanics, hasKeywords: description.includes('cooperative') }
-            })
+            }));
           }}
           disabled={false}
         />
@@ -281,6 +284,7 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
 export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSectionProps) {
   const { db } = useDatabase()
   const { gameHistory } = useGameHistory()
+  const { gameTemplates: templates, refreshGameTemplates } = useGameTemplates()
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<GameTemplate | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<GameTemplate | null>(null)
@@ -327,7 +331,7 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       supportsCooperative: template.supportsCooperative || false,
       supportsCompetitive: template.supportsCompetitive || false,
       supportsCampaign: template.supportsCampaign || false,
-      defaultMode: template.defaultMode || 'competitive',
+  defaultMode: (['cooperative', 'competitive', 'campaign'].includes(template.defaultMode as string) ? template.defaultMode : 'competitive') as 'cooperative' | 'competitive' | 'campaign',
       min_players: template.min_players,
       max_players: template.max_players,
       image: template.image || '',
@@ -356,7 +360,9 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       return
     }
 
+    // Générer un id unique si création
     const template: GameTemplate = {
+      id: editingTemplate?.id ?? generateId(),
       name: formData.name.trim(),
       hasCharacters: formData.hasCharacters,
       characters: formData.hasCharacters && formData.characters.trim() 
@@ -376,6 +382,7 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
         await db!.updateGameTemplate(editingTemplate.name, template)
         toast.success('Game template updated successfully')
         setEditingTemplate(null)
+        logger.info('Game template updated: ' + template.name);
       } else {
         await db!.addGameTemplate(template)
         // Ajout des extensions BGG si présentes
@@ -388,14 +395,17 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
               max_players: typeof ext.maxPlayers === 'number' ? ext.maxPlayers : undefined,
               image: ext.image || undefined
             })
+            logger.debug('Extension ajoutée: ' + (ext.name || ext));
           }
         }
         toast.success('Game template added successfully')
         setShowAddDialog(false)
+        logger.info('Game template added: ' + template.name);
       }
       resetForm()
-      // The parent component will refresh the templates list
+      await refreshGameTemplates()
     } catch (error) {
+      logger.error('Failed to save game template: ' + (error instanceof Error ? error.message : String(error)));
       toast.error('Failed to save game template')
     }
   }
@@ -409,10 +419,14 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       return
     }
 
+    if (typeof template.id !== 'number' || !template.id) {
+      toast.error('Template id is missing or invalid');
+      return;
+    }
     try {
-      await db.deleteGameTemplate(template.name)
+      await db.deleteGameTemplate(template.id)
       toast.success(`${template.name} template removed successfully`)
-      // The parent component will refresh the templates list
+      await refreshGameTemplates()
     } catch (error) {
       toast.error('Failed to delete game template')
     }
@@ -522,9 +536,9 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
 
         {/* Templates Grid */}
         <div className="overflow-y-auto">
-          {gameTemplates.length > 0 ? (
+          {templates.length > 0 ? (
             <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {gameTemplates.map((template) => {
+              {templates.map((template) => {
                 const stats = getTemplateStats(template)
                 
                 return (

@@ -1,4 +1,4 @@
-import { Player, GameSession, GameTemplate } from '@/App'
+import { GameTemplate } from '@/types'
 
 export interface Database {
   addGameExtension?(extension: {
@@ -9,26 +9,26 @@ export interface Database {
     image?: string;
   }): Promise<any>;
   // Player operations
-  getPlayers(): Promise<Player[]>
-  addPlayer(player: Omit<Player, 'id'>): Promise<Player>
-  updatePlayer(id: string, updates: Partial<Player>): Promise<Player>
+  getPlayers(): Promise<any[]>
+  addPlayer(player: Omit<any, 'id'>): Promise<any>
+  updatePlayer(id: string, updates: Partial<any>): Promise<any>
   deletePlayer(id: string): Promise<void>
 
   // Game History operations
-  getGameHistory(): Promise<GameSession[]>
-  addGameSession(session: Omit<GameSession, 'id'>): Promise<GameSession>
-  updateGameSession(id: string, updates: Partial<GameSession>): Promise<GameSession>
+  getGameHistory(): Promise<any[]>
+  addGameSession(session: Omit<any, 'id'>): Promise<any>
+  updateGameSession(id: string, updates: Partial<any>): Promise<any>
   deleteGameSession(id: string): Promise<void>
 
   // Game Template operations
   getGameTemplates(): Promise<GameTemplate[]>
   addGameTemplate(template: GameTemplate): Promise<GameTemplate>
-  updateGameTemplate(name: string, updates: Partial<GameTemplate>): Promise<GameTemplate>
-  deleteGameTemplate(name: string): Promise<void>
+  updateGameTemplate(id: string, updates: Partial<GameTemplate>): Promise<GameTemplate>
+  deleteGameTemplate(id: number): Promise<void>
 
   // Current Game operations
-  getCurrentGame(): Promise<GameSession | null>
-  setCurrentGame(game: GameSession | null): Promise<void>
+  getCurrentGame(): Promise<any | null>
+  setCurrentGame(game: any | null): Promise<void>
 
   // Database management
   init(): Promise<void>

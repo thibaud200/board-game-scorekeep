@@ -10,6 +10,7 @@ import { useDatabase } from '@/lib/database-context'
 import { usePlayers, useGameHistory } from '@/lib/database-hooks'
 import { PlayerStatsDetail } from '@/components/player/PlayerStatsDetail'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface PlayerSectionProps {
   players: Player[]
@@ -34,6 +35,7 @@ export function PlayerSection({ players, onBack }: PlayerSectionProps) {
   }
 
   const handleAddPlayer = async () => {
+    logger.debug('UI: handleAddPlayer called with name: ' + newPlayerName);
     if (!newPlayerName.trim()) return
     
     if (players.some(p => p.name.toLowerCase() === newPlayerName.toLowerCase())) {
@@ -48,12 +50,13 @@ export function PlayerSection({ players, onBack }: PlayerSectionProps) {
       setNewPlayerName('')
       toast.success(`Player added successfully`)
     } catch (error) {
-      console.error('Error adding player:', error)
+      logger.debug('Error adding player: ' + (error instanceof Error ? error.message : String(error)));
       toast.error('Failed to add player')
     }
   }
 
   const handleEditPlayer = async (player: Player) => {
+    logger.debug('UI: handleEditPlayer called for id: ' + player.id + ', new name: ' + editName);
     if (!editName.trim()) return
     
     if (players.some(p => p.id !== player.id && p.name.toLowerCase() === editName.toLowerCase())) {
@@ -67,17 +70,18 @@ export function PlayerSection({ players, onBack }: PlayerSectionProps) {
       setEditName('')
       toast.success('Player updated successfully')
     } catch (error) {
-      console.error('Error updating player:', error)
+      logger.debug('Error updating player: ' + (error instanceof Error ? error.message : String(error)));
       toast.error('Failed to update player')
     }
   }
 
-    const handleDeletePlayer = async (playerId: string) => {
+  const handleDeletePlayer = async (playerId: string) => {
+    logger.debug('UI: handleDeletePlayer called for id: ' + playerId);
     try {
       await deletePlayerFromDB(playerId)
       toast.success('Player deleted successfully')
     } catch (error) {
-      console.error('Error deleting player:', error)
+      logger.debug('Error deleting player: ' + (error instanceof Error ? error.message : String(error)));
       toast.error('Failed to delete player')
     }
   }

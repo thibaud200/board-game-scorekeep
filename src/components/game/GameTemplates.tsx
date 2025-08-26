@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Plus, GameController, Users, Trash, PencilSimple, Trophy, Bookmark } from '@phosphor-icons/react'
-import { GameTemplate } from '@/App'
+import { GameTemplate } from '@/types'
 import { useDatabase } from '@/lib/database-context'
 import { toast } from 'sonner'
+import { logger } from '@/lib/logger'
 
 interface GameTemplatesProps {
   gameTemplates: GameTemplate[]
@@ -25,8 +26,6 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
     name: '',
     hasCharacters: false,
     characters: [] as string[],
-    hasExtensions: false,
-    extensions: [] as string[],
     supportsCooperative: false,
     supportsCompetitive: true, // Default to competitive
     supportsCampaign: false,
@@ -34,15 +33,12 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
   })
   const [newCharacterName, setNewCharacterName] = useState('')
   const [newCharacterType, setNewCharacterType] = useState('')
-  const [newExtension, setNewExtension] = useState('')
 
   const resetForm = () => {
     setFormData({
       name: '',
       hasCharacters: false,
       characters: [],
-      hasExtensions: false,
-      extensions: [],
       supportsCooperative: false,
       supportsCompetitive: true,
       supportsCampaign: false,
@@ -50,7 +46,6 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
     })
     setNewCharacterName('')
     setNewCharacterType('')
-    setNewExtension('')
   }
 
   const handleAdd = () => {
@@ -65,17 +60,16 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
       name: template.name,
       hasCharacters: template.hasCharacters,
       characters: template.characters || [],
-      hasExtensions: template.hasExtensions,
-      extensions: template.extensions || [],
       supportsCooperative: template.supportsCooperative,
       supportsCompetitive: template.supportsCompetitive,
       supportsCampaign: template.supportsCampaign,
-      defaultMode: template.defaultMode
+      defaultMode: (['cooperative', 'competitive', 'campaign'].includes(template.defaultMode as string) ? template.defaultMode : 'competitive') as 'cooperative' | 'competitive' | 'campaign'
     })
     setShowAddDialog(true)
   }
 
   const handleSave = async () => {
+    logger.debug('UI: handleSave called for game template: ' + JSON.stringify(formData))
     if (!formData.name.trim()) {
       toast.error('Game name is required')
       return
@@ -90,8 +84,6 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
       name: formData.name.trim(),
       hasCharacters: formData.hasCharacters,
       characters: formData.hasCharacters ? formData.characters : undefined,
-      hasExtensions: formData.hasExtensions,
-      extensions: formData.hasExtensions ? formData.extensions : undefined,
       supportsCooperative: formData.supportsCooperative,
       supportsCompetitive: formData.supportsCompetitive,
       supportsCampaign: formData.supportsCampaign,
@@ -100,6 +92,7 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
 
     try {
       if (editingTemplate) {
+        logger.debug('UI: updateGameTemplate called for: ' + editingTemplate.name)
         await db!.updateGameTemplate(editingTemplate.name, template)
         toast.success('Game template updated!')
       } else {
@@ -109,6 +102,7 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
           return
         }
         
+        logger.debug('UI: addGameTemplate called for: ' + template.name)
         await db!.addGameTemplate(template)
         toast.success('Game template added!')
       }
@@ -117,24 +111,25 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
       resetForm()
       // Parent component will refresh templates list
     } catch (error) {
+      logger.debug('Error saving game template: ' + (error instanceof Error ? error.message : String(error)))
       toast.error('Failed to save game template')
     }
   }
 
-  const handleDelete = async (templateName: string) => {
+  const handleDelete = async (templateId: number) => {
+    logger.debug('UI: handleDelete called for game template id: ' + templateId);
     if (!db) return
-    
     try {
-      await db.deleteGameTemplate(templateName)
+      await db.deleteGameTemplate(templateId)
       toast.success('Game template deleted')
-      // Parent component will refresh templates list
     } catch (error) {
+      logger.debug('Error deleting game template: ' + (error instanceof Error ? error.message : String(error)));
       toast.error('Failed to delete game template')
     }
   }
 
-  const confirmDelete = (templateName: string) => {
-    handleDelete(templateName)
+  const confirmDelete = (templateId: number) => {
+    handleDelete(templateId)
   }
 
   const addCharacter = () => {
@@ -164,23 +159,6 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
     setFormData(prev => ({
       ...prev,
       characters: prev.characters.filter(c => c !== character)
-    }))
-  }
-
-  const addExtension = () => {
-    if (newExtension.trim() && !formData.extensions.includes(newExtension.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        extensions: [...prev.extensions, newExtension.trim()]
-      }))
-      setNewExtension('')
-    }
-  }
-
-  const removeExtension = (extension: string) => {
-    setFormData(prev => ({
-      ...prev,
-      extensions: prev.extensions.filter(e => e !== extension)
     }))
   }
 
@@ -231,11 +209,6 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
                         Characters
                       </Badge>
                     )}
-                    {template.hasExtensions && (
-                      <Badge variant="secondary" className="text-xs">
-                        Extensions
-                      </Badge>
-                    )}
                   </div>
                 </div>
                 <div className="flex gap-1">
@@ -253,6 +226,8 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => confirmDelete(template.id as number)}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                         title="Delete template"
                         aria-label="Delete template"
                       >
@@ -269,7 +244,7 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() => confirmDelete(template.name)}
+                          onClick={() => confirmDelete(template.id as number)}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                           Delete
@@ -293,24 +268,6 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
                     {template.characters.length > 3 && (
                       <Badge variant="outline" className="text-xs">
                         +{template.characters.length - 3} more
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {template.extensions && template.extensions.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium mb-1">Extensions</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {template.extensions.slice(0, 2).map(ext => (
-                      <Badge key={ext} variant="outline" className="text-xs">
-                        {ext}
-                      </Badge>
-                    ))}
-                    {template.extensions.length > 2 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{template.extensions.length - 2} more
                       </Badge>
                     )}
                   </div>
@@ -474,47 +431,6 @@ export function GameTemplates({ gameTemplates }: GameTemplatesProps) {
                         onClick={() => removeCharacter(character)}
                       >
                         {character} ×
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="hasExtensions"
-                  checked={formData.hasExtensions}
-                  onCheckedChange={(checked) => 
-                    setFormData(prev => ({ ...prev, hasExtensions: checked as boolean }))
-                  }
-                />
-                <Label htmlFor="hasExtensions">Game has extensions</Label>
-              </div>
-
-              {formData.hasExtensions && (
-                <div className="space-y-2 pl-6">
-                  <Label>Extensions</Label>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Input
-                      value={newExtension}
-                      onChange={(e) => setNewExtension(e.target.value)}
-                      placeholder="Add extension name"
-                      className="flex-1"
-                      onKeyPress={(e) => e.key === 'Enter' && addExtension()}
-                    />
-                    <Button type="button" onClick={addExtension} className="shrink-0">Add</Button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.extensions.map(extension => (
-                      <Badge
-                        key={extension}
-                        variant="secondary"
-                        className="cursor-pointer"
-                        onClick={() => removeExtension(extension)}
-                      >
-                        {extension} ×
                       </Badge>
                     ))}
                   </div>

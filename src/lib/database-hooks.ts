@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useDatabase } from './database-context'
-import { Player, GameSession, GameTemplate } from '@/App'
+import { GameTemplate } from '@/types'
+import { logger } from '@/lib/logger';
 
 // Hook for players data
 export function usePlayers() {
   const { db } = useDatabase()
-  const [players, setPlayers] = useState<Player[]>([])
+  const [players, setPlayers] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshPlayers = async () => {
@@ -44,26 +45,30 @@ export function usePlayers() {
     refreshPlayers()
   }, [db])
 
-  const addPlayer = async (player: Omit<Player, 'id'>) => {
+  const addPlayer = async (player: Omit<any, 'id'>) => {
+  logger.debug('addPlayer called with: ' + JSON.stringify(player));
     if (!db) return
     try {
       const newPlayer = await db.addPlayer(player)
       setPlayers(prev => [...prev, newPlayer])
+      logger.info('Player added: ' + (newPlayer?.name || JSON.stringify(newPlayer)));
       return newPlayer
     } catch (error) {
-      console.error('Failed to add player:', error)
+      logger.error('Failed to add player: ' + (error instanceof Error ? error.message : String(error)));
       throw error
     }
   }
 
-  const updatePlayer = async (id: string, updates: Partial<Player>) => {
+  const updatePlayer = async (id: string, updates: Partial<any>) => {
+  logger.debug('updatePlayer called with id: ' + id + ', updates: ' + JSON.stringify(updates));
     if (!db) return
     try {
       const updated = await db.updatePlayer(id, updates)
       setPlayers(prev => prev.map(p => p.id === id ? updated : p))
+      logger.info('Player updated: ' + id);
       return updated
     } catch (error) {
-      console.error('Failed to update player:', error)
+      logger.error('Failed to update player: ' + (error instanceof Error ? error.message : String(error)));
       throw error
     }
   }
@@ -92,7 +97,7 @@ export function usePlayers() {
 // Hook for game history
 export function useGameHistory() {
   const { db } = useDatabase()
-  const [gameHistory, setGameHistory] = useState<GameSession[]>([])
+  const [gameHistory, setGameHistory] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshGameHistory = async () => {
@@ -111,26 +116,30 @@ export function useGameHistory() {
     refreshGameHistory()
   }, [db])
 
-  const addGameSession = async (session: Omit<GameSession, 'id'>) => {
+  const addGameSession = async (session: Omit<any, 'id'>) => {
+  logger.debug('addGameSession called with: ' + JSON.stringify(session));
     if (!db) return
     try {
       const newSession = await db.addGameSession(session)
       setGameHistory(prev => [newSession, ...prev])
+      logger.info('Game session added: ' + (newSession?.id || JSON.stringify(newSession)));
       return newSession
     } catch (error) {
-      console.error('Failed to add game session:', error)
+      logger.error('Failed to add game session: ' + (error instanceof Error ? error.message : String(error)));
       throw error
     }
   }
 
-  const updateGameSession = async (id: string, updates: Partial<GameSession>) => {
+  const updateGameSession = async (id: string, updates: Partial<any>) => {
+  logger.debug('updateGameSession called with id: ' + id + ', updates: ' + JSON.stringify(updates));
     if (!db) return
     try {
       const updated = await db.updateGameSession(id, updates)
       setGameHistory(prev => prev.map(s => s.id === id ? updated : s))
+      logger.info('Game session updated: ' + id);
       return updated
     } catch (error) {
-      console.error('Failed to update game session:', error)
+      logger.error('Failed to update game session: ' + (error instanceof Error ? error.message : String(error)));
       throw error
     }
   }
@@ -179,34 +188,38 @@ export function useGameTemplates() {
   }, [db])
 
   const addGameTemplate = async (template: GameTemplate) => {
+  logger.debug('addGameTemplate called with: ' + JSON.stringify(template));
     if (!db) return
     try {
       const newTemplate = await db.addGameTemplate(template)
       setGameTemplates(prev => [...prev, newTemplate])
+      logger.info('Game template added: ' + (newTemplate?.name || JSON.stringify(newTemplate)));
       return newTemplate
     } catch (error) {
-      console.error('Failed to add game template:', error)
+      logger.error('Failed to add game template: ' + (error instanceof Error ? error.message : String(error)));
       throw error
     }
   }
 
-  const updateGameTemplate = async (name: string, updates: Partial<GameTemplate>) => {
+  const updateGameTemplate = async (id: string, updates: Partial<GameTemplate>) => {
+  logger.debug('updateGameTemplate called with id: ' + id + ', updates: ' + JSON.stringify(updates));
     if (!db) return
     try {
-      const updated = await db.updateGameTemplate(name, updates)
-      setGameTemplates(prev => prev.map(t => t.name === name ? updated : t))
+      const updated = await db.updateGameTemplate(String(id), updates)
+      setGameTemplates(prev => prev.map(t => String(t.id) === String(id) ? updated : t))
+      logger.info('Game template updated: ' + id);
       return updated
     } catch (error) {
-      console.error('Failed to update game template:', error)
+      logger.error('Failed to update game template: ' + (error instanceof Error ? error.message : String(error)));
       throw error
     }
   }
 
-  const deleteGameTemplate = async (name: string) => {
+  const deleteGameTemplate = async (id: string) => {
     if (!db) return
     try {
-      await db.deleteGameTemplate(name)
-      setGameTemplates(prev => prev.filter(t => t.name !== name))
+      await db.deleteGameTemplate(Number(id))
+      setGameTemplates(prev => prev.filter(t => t.id !== Number(id)))
     } catch (error) {
       console.error('Failed to delete game template:', error)
       throw error
@@ -226,7 +239,7 @@ export function useGameTemplates() {
 // Hook for current game
 export function useCurrentGame() {
   const { db } = useDatabase()
-  const [currentGame, setCurrentGame] = useState<GameSession | null>(null)
+  const [currentGame, setCurrentGame] = useState<any | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const refreshCurrentGame = async () => {
@@ -245,7 +258,7 @@ export function useCurrentGame() {
     refreshCurrentGame()
   }, [db])
 
-  const updateCurrentGame = async (game: GameSession | null) => {
+  const updateCurrentGame = async (game: any | null) => {
     if (!db) return
     try {
       await db.setCurrentGame(game)

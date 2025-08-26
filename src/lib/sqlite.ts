@@ -1,6 +1,8 @@
 import { Database, generateId, DEFAULT_GAME_TEMPLATES } from './database'
-import type { Player, GameSession, GameTemplate } from '../App'
+import type { Player, GameSession } from '../App'
+import { GameTemplate } from '@/types'
 import * as sql from "sql.js"
+import { logger } from '@/lib/logger';
 
 const initSqlJs = sql.default ?? sql
 
@@ -125,9 +127,9 @@ export class SQLiteDatabase implements Database {
         await this.saveToStorage()
       }
       
-      console.log('Base de données SQLite initialisée avec succès')
+  logger.debug('Base de données SQLite initialisée avec succès');
     } catch (error) {
-      console.error('Échec d\'initialisation de la base de données SQLite:', error)
+  logger.debug('Échec d\'initialisation de la base de données SQLite: ' + (error instanceof Error ? error.message : String(error)));
       throw error
     }
   }
@@ -140,11 +142,11 @@ export class SQLiteDatabase implements Database {
       if (saved) {
         const data = new Uint8Array(JSON.parse(saved))
         this.db = new this.SQL.Database(data)
-        console.log('Base de données chargée depuis localStorage')
+          logger.debug('Base de données chargée depuis localStorage');
         return true
       }
     } catch (error) {
-      console.log('Aucune sauvegarde localStorage trouvée')
+        logger.debug('Aucune sauvegarde localStorage trouvée');
     }
     
     return false
@@ -165,8 +167,7 @@ export class SQLiteDatabase implements Database {
         character_class TEXT,
         game_name TEXT NOT NULL,
         description TEXT,
-        image TEXT,
-        FOREIGN KEY (game_name) REFERENCES game_templates(name)
+        image TEXT
       )
     `)
     if (!this.db) throw new Error('Base de données non initialisée')
@@ -184,7 +185,8 @@ export class SQLiteDatabase implements Database {
   if (!this.db) throw new Error('Base de données non initialisée');
   this.db.run(`
       CREATE TABLE IF NOT EXISTS game_templates (
-        name TEXT PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
         has_characters BOOLEAN NOT NULL,
         characters TEXT,
         is_cooperative_by_default BOOLEAN NOT NULL,
@@ -192,7 +194,12 @@ export class SQLiteDatabase implements Database {
         min_players INTEGER,
         max_players INTEGER,
         description TEXT,
-        image TEXT
+        image TEXT,
+        id_bgg TEXT,
+        supports_cooperative BOOLEAN,
+        supports_competitive BOOLEAN,
+        supports_campaign BOOLEAN,
+        default_mode TEXT
       )
     `)
 
@@ -242,14 +249,14 @@ export class SQLiteDatabase implements Database {
 
   if (!this.db) throw new Error('Base de données non initialisée');
   this.db.run('INSERT OR IGNORE INTO current_game (id, game_data) VALUES (1, NULL)')
-    console.log('Tables de base de données créées avec succès')
+  logger.debug('Tables de base de données créées avec succès');
   }
 
   private async seedDefaultData(): Promise<void> {
     for (const template of DEFAULT_GAME_TEMPLATES) {
       await this.addGameTemplate(template)
     }
-    console.log('Templates par défaut ajoutés')
+  logger.debug('Templates par défaut ajoutés');
   }
 
   async saveToFile(): Promise<void> {
@@ -272,9 +279,9 @@ export class SQLiteDatabase implements Database {
         await writable.write(data)
         await writable.close()
         
-        console.log(`Base de données sauvegardée: ${this.dbPath}`)
+          logger.debug(`Base de données sauvegardée: ${this.dbPath}`);
       } catch (err) {
-        console.log('Sauvegarde annulée par l\'utilisateur')
+          logger.debug('Sauvegarde annulée par l\'utilisateur');
         this.downloadDatabase(data)
       }
     } else {
@@ -302,9 +309,9 @@ export class SQLiteDatabase implements Database {
         this.db = new this.SQL.Database(uint8Array)
         this.saveToStorage()
         
-        console.log(`Base de données chargée depuis: ${file.name}`)
+          logger.debug(`Base de données chargée depuis: ${file.name}`);
       } catch (err) {
-        console.log('Chargement de fichier annulé')
+          logger.debug('Chargement de fichier annulé');
         throw new Error('Chargement de fichier annulé')
       }
     } else {
@@ -325,7 +332,7 @@ export class SQLiteDatabase implements Database {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    console.log(`Base de données téléchargée: ${this.dbPath}`)
+  logger.debug(`Base de données téléchargée: ${this.dbPath}`);
   }
 
   // Player operations
@@ -562,6 +569,7 @@ export class SQLiteDatabase implements Database {
     while (stmt.step()) {
       const row = stmt.getAsObject();
       templates.push({
+        id: row.id,
         name: row.name as string,
         hasCharacters: Boolean(row.has_characters),
         characters: row.characters ? JSON.parse(row.characters as string) : undefined,
@@ -585,29 +593,39 @@ export class SQLiteDatabase implements Database {
 
     this.db.run(`
       INSERT OR REPLACE INTO game_templates (
-        name, has_characters, characters, is_cooperative_by_default, base_game_name, min_players, max_players, description, image
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        name, has_characters, characters, is_cooperative_by_default, base_game_name, min_players, max_players, description, image, id_bgg, supports_cooperative, supports_competitive, supports_campaign, default_mode
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       template.name,
       template.hasCharacters ? 1 : 0,
       template.characters ? JSON.stringify(template.characters) : null,
       template.isCooperativeByDefault ? 1 : 0,
-      (template as any).base_game_name || null,
+      template.base_game_name || null,
       template.min_players || null,
       template.max_players || null,
       template.description || null,
-      template.image || null
+      template.image || null,
+      template.id_bgg || null,
+      template.supportsCooperative ? 1 : 0,
+      template.supportsCompetitive ? 1 : 0,
+      template.supportsCampaign ? 1 : 0,
+      template.defaultMode || 'competitive'
     ])
 
     this.saveToStorage()
     return template
   }
 
-  async updateGameTemplate(name: string, updates: Partial<GameTemplate>): Promise<GameTemplate> {
+  async updateGameTemplate(id: string, updates: Partial<GameTemplate>): Promise<GameTemplate> {
     if (!this.db) throw new Error('Database not initialized')
 
     const sets: string[] = []
     const values: any[] = []
+
+    if (updates.id_bgg !== undefined) {
+      sets.push('id_bgg = ?');
+      values.push(updates.id_bgg);
+    }
 
     if (updates.hasCharacters !== undefined) {
       sets.push('has_characters = ?');
@@ -646,24 +664,27 @@ export class SQLiteDatabase implements Database {
       throw new Error('No updates provided')
     }
 
-    values.push(name)
-    this.db.run(`UPDATE game_templates SET ${sets.join(', ')} WHERE name = ?`, values)
+  values.push(id)
+  this.db.run(`UPDATE game_templates SET ${sets.join(', ')} WHERE id = ?`, values)
 
     this.saveToStorage()
 
     const templates = await this.getGameTemplates()
-    const updated = templates.find(t => t.name === name)
+  const updated = templates.find(t => String(t.id) === String(id))
     if (!updated) throw new Error('Game template not found')
     return updated
   }
 
-  async deleteGameTemplate(name: string): Promise<void> {
+  async deleteGameTemplate(id: number): Promise<void> {
   if (!this.db) throw new Error('Database not initialized');
+  // Vérifie et convertit l'id en nombre si besoin
+  const templateId = typeof id === 'string' ? Number(id) : id;
+  if (!templateId || isNaN(templateId)) throw new Error('Invalid template id');
   // Supprime les extensions associées
-  this.db.run('DELETE FROM game_extensions WHERE base_game_name = ?', [name]);
+  this.db.run('DELETE FROM game_extensions WHERE base_game_name = ?', [templateId]);
   // Supprime les personnages liés
-  this.db.run('DELETE FROM game_characters WHERE game_name = ?', [name]);
-  this.db.run('DELETE FROM game_templates WHERE name = ?', [name]);
+  this.db.run('DELETE FROM game_characters WHERE game_name = ?', [templateId]);
+  this.db.run('DELETE FROM game_templates WHERE id = ?', [templateId]);
   this.saveToStorage();
   }
 

@@ -1,5 +1,6 @@
 import { Database, generateId, DEFAULT_GAME_TEMPLATES } from './database'
-import { Player, GameSession, GameTemplate } from '@/App'
+import { Player, GameSession } from '@/App'
+import { GameTemplate } from '@/types'
 import * as sql from "sql.js"
 
 const initSqlJs = sql.default ?? sql
@@ -302,8 +303,7 @@ export class SQLiteDatabase implements Database {
       const row = stmt.getAsObject()
       sessions.push({
         id: row.id as string,
-        gameTemplate: row.game_type as string, // Map game_type to gameTemplate for compatibility
-        gameType: row.game_type as string,
+  gameTemplate: row.game_type as string, // Map game_type to gameTemplate pour compatibilité
         gameMode: row.game_mode as 'cooperative' | 'competitive' | 'campaign' || 'competitive',
         isCooperative: Boolean(row.is_cooperative),
         players: JSON.parse(row.players as string),
@@ -337,7 +337,7 @@ export class SQLiteDatabase implements Database {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id,
-      session.gameType,
+  session.gameTemplate,
       session.isCooperative ? 1 : 0,
       JSON.stringify(session.players),
       JSON.stringify(session.scores),
@@ -362,9 +362,9 @@ export class SQLiteDatabase implements Database {
     const sets: string[] = []
     const values: any[] = []
 
-    if (updates.gameType !== undefined) {
+    if (updates.gameTemplate !== undefined) {
       sets.push('game_type = ?')
-      values.push(updates.gameType)
+      values.push(updates.gameTemplate)
     }
     if (updates.isCooperative !== undefined) {
       sets.push('is_cooperative = ?')
@@ -446,8 +446,6 @@ export class SQLiteDatabase implements Database {
         name: row.name as string,
         hasCharacters: Boolean(row.has_characters),
         characters: row.characters ? JSON.parse(row.characters as string) : undefined,
-        hasExtensions: Boolean(row.has_extensions),
-        extensions: row.extensions ? JSON.parse(row.extensions as string) : undefined,
         supportsCooperative: Boolean(row.supports_cooperative),
         supportsCompetitive: Boolean(row.supports_competitive),
         supportsCampaign: Boolean(row.supports_campaign),
@@ -464,14 +462,12 @@ export class SQLiteDatabase implements Database {
 
     this.db.run(`
       INSERT OR REPLACE INTO game_templates (
-        name, has_characters, characters, has_extensions, extensions, supports_cooperative, supports_competitive, supports_campaign, default_mode
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        name, has_characters, characters, supports_cooperative, supports_competitive, supports_campaign, default_mode
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
       template.name,
       template.hasCharacters ? 1 : 0,
       template.characters ? JSON.stringify(template.characters) : null,
-      template.hasExtensions ? 1 : 0,
-      template.extensions ? JSON.stringify(template.extensions) : null,
       template.supportsCooperative ? 1 : 0,
       template.supportsCompetitive ? 1 : 0,
       template.supportsCampaign ? 1 : 0,
@@ -495,14 +491,6 @@ export class SQLiteDatabase implements Database {
     if (updates.characters !== undefined) {
       sets.push('characters = ?')
       values.push(updates.characters ? JSON.stringify(updates.characters) : null)
-    }
-    if (updates.hasExtensions !== undefined) {
-      sets.push('has_extensions = ?')
-      values.push(updates.hasExtensions ? 1 : 0)
-    }
-    if (updates.extensions !== undefined) {
-      sets.push('extensions = ?')
-      values.push(updates.extensions ? JSON.stringify(updates.extensions) : null)
     }
     if (updates.supportsCooperative !== undefined) {
       sets.push('supports_cooperative = ?')
@@ -536,11 +524,10 @@ export class SQLiteDatabase implements Database {
     return updated
   }
 
-  async deleteGameTemplate(name: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized')
-
-    this.db.run('DELETE FROM game_templates WHERE name = ?', [name])
-    this.saveToStorage()
+  async deleteGameTemplate(id: number): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    this.db.run('DELETE FROM game_templates WHERE id = ?', [id]);
+    this.saveToStorage();
   }
 
   // Current Game operations
