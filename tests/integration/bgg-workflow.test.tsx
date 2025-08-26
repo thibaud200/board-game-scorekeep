@@ -27,8 +27,8 @@ import React from 'react'
 import '@testing-library/jest-dom'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import App from '../../src/App' // Chemin relatif
-import { bggService } from '../../src/services/BGGService' // Chemin relatif
+import App from '../../frontend/src/App' // Chemin relatif
+import { bggService } from '../../frontend/src/services/BGGService' // Chemin relatif
 
 // Mock window.matchMedia pour les tests
 Object.defineProperty(window, 'matchMedia', {
