@@ -25,7 +25,7 @@
     "test:watch": "concurrently \"npm run test:watch --workspace=frontend\" \"npm run test:watch --workspace=backend\"",
     "test:coverage": "npm run test:coverage --workspace=frontend && npm run test:coverage --workspace=backend",
     "clean": "npm run clean --workspace=frontend --if-present && npm run clean --workspace=backend --if-present",
-    "postinstall": "npm install --workspace=frontend && npm install --workspace=backend"
+    "install:all": "npm install --workspace=frontend && npm install --workspace=backend"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
