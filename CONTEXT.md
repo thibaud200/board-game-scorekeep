@@ -42,6 +42,10 @@ Board Game Score Tracker est une application web pour gérer les parties de jeux
 - **TOUJOURS** protéger les données sensibles
 - **TOUJOURS** suivre les meilleures pratiques de chaque technologie utilisée
 - **TOUJOURS** Respecter la chaîne des types de données entre le frontend, le backend et la BDD
+- **TOUJOURS** synchroniser les modifications de la BDD avec les types utilisés dans le code
+- **TOUJOURS** utiliser des types explicites et éviter les types implicites
+- **TOUJOURS** utiliser tous les fichiers de la documentation pour garantir la cohérence globale du projet (fichier *.md)
+
 
 ### 📋 Obligations systématiques
 - Toujours proposer des solutions modulaires et testables
@@ -225,7 +229,6 @@ npm run db:reset     # Reset complet
 ---
 
 ## 💡 Exemples de réponses attendues
-
 
 ### Format de modification de fichier
 ```typescript

@@ -1,4 +1,5 @@
 import { GameTemplate } from '@/types'
+import { PlayerDB, GameSessionDB } from '../types';
 
 export interface Database {
   addGameExtension?(extension: {
@@ -7,17 +8,17 @@ export interface Database {
     min_players?: number;
     max_players?: number;
     image?: string;
-  }): Promise<any>;
+  }): Promise<void>;
   // Player operations
-  getPlayers(): Promise<any[]>
-  addPlayer(player: Omit<any, 'id'>): Promise<any>
-  updatePlayer(id: string, updates: Partial<any>): Promise<any>
+  getPlayers(): Promise<PlayerDB[]>
+  addPlayer(player: Omit<PlayerDB, 'id'>): Promise<PlayerDB>
+  updatePlayer(id: string, updates: Partial<PlayerDB>): Promise<PlayerDB>
   deletePlayer(id: string): Promise<void>
 
   // Game History operations
-  getGameHistory(): Promise<any[]>
-  addGameSession(session: Omit<any, 'id'>): Promise<any>
-  updateGameSession(id: string, updates: Partial<any>): Promise<any>
+  getGameHistory(): Promise<GameSessionDB[]>
+  addGameSession(session: Omit<GameSessionDB, 'id'>): Promise<GameSessionDB>
+  updateGameSession(id: string, updates: Partial<GameSessionDB>): Promise<GameSessionDB>
   deleteGameSession(id: string): Promise<void>
 
   // Game Template operations
@@ -27,8 +28,8 @@ export interface Database {
   deleteGameTemplate(id: string | number): Promise<void>
 
   // Current Game operations
-  getCurrentGame(): Promise<any | null>
-  setCurrentGame(game: any | null): Promise<void>
+  getCurrentGame(): Promise<GameSessionDB | null>
+  setCurrentGame(game: GameSessionDB | null): Promise<void>
 
   // Database management
   init(): Promise<void>
@@ -46,16 +47,30 @@ export const DEFAULT_GAME_TEMPLATES: GameTemplate[] = [
   {
     name: 'Cthulhu',
     hasCharacters: true,
-  characters: ['Investigator', 'Detective', 'Journalist', 'Professor', 'Doctor', 'Mystic'],
+    characters: [
+      { id: 'investigator', name: 'Investigator', classType: 'Detective' },
+      { id: 'detective', name: 'Detective', classType: 'Detective' },
+      { id: 'journalist', name: 'Journalist', classType: 'Support' },
+      { id: 'professor', name: 'Professor', classType: 'Scholar' },
+      { id: 'doctor', name: 'Doctor', classType: 'Medic' },
+      { id: 'mystic', name: 'Mystic', classType: 'Occultist' }
+    ],
     supportsCooperative: true,
     supportsCompetitive: false,
     supportsCampaign: false,
     defaultMode: 'cooperative'
   },
   {
-    name: 'Demeure de l\'Épouvante',
+    name: "Demeure de l'Épouvante",
     hasCharacters: true,
-  characters: ['Explorer', 'Scholar', 'Occultist', 'Psychic', 'Dilettante', 'Athlete'],
+    characters: [
+      { id: 'explorer', name: 'Explorer', classType: 'Scout' },
+      { id: 'scholar', name: 'Scholar', classType: 'Scholar' },
+      { id: 'occultist', name: 'Occultist', classType: 'Occultist' },
+      { id: 'psychic', name: 'Psychic', classType: 'Support' },
+      { id: 'dilettante', name: 'Dilettante', classType: 'Wildcard' },
+      { id: 'athlete', name: 'Athlete', classType: 'Tank' }
+    ],
     supportsCooperative: true,
     supportsCompetitive: false,
     supportsCampaign: false,

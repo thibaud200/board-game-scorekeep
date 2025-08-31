@@ -17,6 +17,7 @@ import { getExtensionsForGame } from '@/lib/extensions-utils';
 import { useGameTemplates } from '@/lib/database-hooks';
 import { logger } from '@/lib/logger';
 import { generateId } from '@/lib/database';
+import { BGGExpansion } from '@/services/BGGService'
 
 interface GameTemplateSectionProps {
   gameTemplates: GameTemplate[]
@@ -26,22 +27,30 @@ interface GameTemplateSectionProps {
 // DialogForm component moved outside to prevent re-rendering
 interface DialogFormProps {
   formData: {
-    name: string
-    hasCharacters: boolean
-    characters: string
-    supportsCooperative: boolean
-    supportsCompetitive: boolean
-    supportsCampaign: boolean
-    defaultMode: 'cooperative' | 'competitive' | 'campaign'
+    name: string;
+    hasCharacters: boolean;
+    characters: string;
+    supportsCooperative: boolean;
+    supportsCompetitive: boolean;
+    supportsCampaign: boolean;
+    defaultMode: 'cooperative' | 'competitive' | 'campaign';
+    min_players: number | undefined;
+    max_players: number | undefined;
+    image: string;
+    extensions: string[];
   }
   setFormData: React.Dispatch<React.SetStateAction<{
-    name: string
-    hasCharacters: boolean
-    characters: string
-    supportsCooperative: boolean
-    supportsCompetitive: boolean
-    supportsCampaign: boolean
-    defaultMode: 'cooperative' | 'competitive' | 'campaign'
+    name: string;
+    hasCharacters: boolean;
+    characters: string;
+    supportsCooperative: boolean;
+    supportsCompetitive: boolean;
+    supportsCampaign: boolean;
+    defaultMode: 'cooperative' | 'competitive' | 'campaign';
+    min_players: number | undefined;
+    max_players: number | undefined;
+    image: string;
+    extensions: string[];
   }>>
   saveTemplate: () => void
   onCancel: () => void
@@ -137,9 +146,9 @@ function DialogForm({ formData, setFormData, saveTemplate, onCancel, editingTemp
               defaultMode,
               min_players: gameData.minPlayers,
               max_players: gameData.maxPlayers,
-              image: gameData.image || '',
-              extensions: gameData.expansions || []
-            }))
+              image: gameData.image,
+              extensions: gameData.expansions.map((exp: BGGExpansion) => exp.name) // <-- fix here
+            }));
             
             // Log pour debugging et monitoring de l'analyse intelligente
             logger.info('Auto-detected game modes: ' + JSON.stringify({
@@ -303,7 +312,7 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
   min_players: undefined as number | undefined,
   max_players: undefined as number | undefined,
   image: '',
-  extensions: [] as any[]
+  extensions: [] as string[]
   })
 
   const resetForm = () => {
@@ -366,8 +375,8 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
       id: editingTemplate?.id ?? generateId(),
       name: formData.name.trim(),
       hasCharacters: formData.hasCharacters,
-      characters: formData.hasCharacters && formData.characters.trim() 
-        ? formData.characters.split(',').map(s => s.trim()).filter(s => s)
+      characters: formData.hasCharacters && formData.characters.trim()
+        ? formData.characters.split(',').map(s => ({ id: generateId(), name: s.trim() })).filter(c => c.name)
         : undefined,
       supportsCooperative: formData.supportsCooperative,
       supportsCompetitive: formData.supportsCompetitive,
@@ -390,13 +399,10 @@ export function GameTemplateSection({ gameTemplates, onBack }: GameTemplateSecti
         if (db.addGameExtension && formData.extensions && formData.extensions.length > 0) {
           for (const ext of formData.extensions) {
             await db.addGameExtension({
-              name: ext.name || ext,
-              base_game_name: template.name,
-              min_players: typeof ext.minPlayers === 'number' ? ext.minPlayers : undefined,
-              max_players: typeof ext.maxPlayers === 'number' ? ext.maxPlayers : undefined,
-              image: ext.image || undefined
-            })
-            logger.debug('Extension ajoutée: ' + (ext.name || ext));
+              name: ext,
+              base_game_name: template.name
+            });
+            logger.debug('Extension ajoutée: ' + ext);
           }
         }
         toast.success('Game template added successfully')

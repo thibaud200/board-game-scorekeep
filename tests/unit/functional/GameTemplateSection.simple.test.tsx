@@ -19,8 +19,14 @@ jest.mock('../../../src/lib/database-context', () => ({
 const mockUseDatabase = useDatabase as jest.MockedFunction<typeof useDatabase>
 
 // Mock BGGGameSearch component
+import type { BGGGameData } from '../../../src/services/BGGService';
+import type { Database } from '../../../src/lib/database';
+import '@testing-library/jest-dom';
 jest.mock('../../../src/components/BGGGameSearch', () => ({
-  BGGGameSearch: ({ onGameImport, onGameNameChange }: any) => (
+  BGGGameSearch: ({ onGameImport, onGameNameChange }: {
+    onGameImport?: (gameData: BGGGameData) => void;
+    onGameNameChange?: (name: string) => void;
+  }) => (
     <div data-testid="bgg-search">
       <input 
         data-testid="bgg-search-input"
@@ -68,13 +74,13 @@ describe('GameTemplateSection - Tests Fonctionnels (Simplifié)', () => {
 
   const mockDatabaseContext = {
     db: {
-      addGameTemplate: jest.fn().mockResolvedValue({ id: 1 }),
-      updateGameTemplate: jest.fn().mockResolvedValue({}),
-      deleteGameTemplate: jest.fn().mockResolvedValue({}),
-      getGameHistory: jest.fn().mockResolvedValue([]), // Ajout de cette méthode manquante
-      getPlayers: jest.fn().mockResolvedValue([]),
-      addPlayer: jest.fn().mockResolvedValue({ id: 1 })
-    } as any,
+      addGameTemplate: jest.fn<Database['addGameTemplate']>().mockResolvedValue({ id: 1, name: '', hasCharacters: false, characters: '', hasExtensions: false, extensions: '', supportsCooperative: false, supportsCompetitive: false, supportsCampaign: false, defaultMode: 'cooperative' }),
+      updateGameTemplate: jest.fn<Database['updateGameTemplate']>().mockResolvedValue({ id: 1, name: '', hasCharacters: false, characters: '', hasExtensions: false, extensions: '', supportsCooperative: false, supportsCompetitive: false, supportsCampaign: false, defaultMode: 'cooperative' }),
+      deleteGameTemplate: jest.fn<Database['deleteGameTemplate']>().mockResolvedValue(undefined),
+      getGameHistory: jest.fn<Database['getGameHistory']>().mockResolvedValue([]),
+      getPlayers: jest.fn<Database['getPlayers']>().mockResolvedValue([]),
+      addPlayer: jest.fn<Database['addPlayer']>().mockResolvedValue({ id: 1, name: '', stats: {} })
+    },
     isLoading: false,
     error: null,
     saveToFile: jest.fn(),

@@ -5,6 +5,52 @@
  */
 
 // Types BGG locaux
+// Import explicite pour Jest mocks
+// Jest est globalement disponible en environnement de test
+declare const jest: {
+  fn: <T extends (...args: any[]) => any>(implementation?: T) => jest.MockInstance<T>;
+  restoreAllMocks: () => void;
+  clearAllMocks: () => void;
+};
+
+declare namespace jest {
+  interface MockInstance<T extends (...args: any[]) => any = (...args: any[]) => any> {
+    (...args: Parameters<T>): ReturnType<T>;
+    mockImplementation(fn: T): this;
+    mockReset(): this;
+    // ...autres méthodes utiles si besoin
+  }
+}
+// Types partagés importés pour les mocks
+interface GameTemplate {
+  id?: string | number;
+  id_bgg?: string;
+  name: string;
+  hasCharacters: boolean;
+  characters?: GameCharacter[];
+  supportsCooperative: boolean;
+  supportsCompetitive: boolean;
+  supportsCampaign: boolean;
+  defaultMode?: string;
+  isCooperativeByDefault?: boolean;
+  min_players?: number;
+  max_players?: number;
+  description?: string;
+  image?: string;
+  base_game_name?: string;
+}
+
+interface GameCharacter {
+  id: string;
+  name: string;
+  classType?: string;
+  description?: string;
+  abilities?: string[];
+  imageUrl?: string;
+  source?: 'manual' | 'api_boardgamegeek' | string;
+  externalId?: string;
+  createdAt?: string;
+}
 interface BGGSearchResult {
   id: number
   name: string
@@ -37,9 +83,9 @@ interface BGGGameData {
 // === MOCK BGG SERVICE ===
 
 export const createMockBGGService = () => ({
-  searchGames: jest.fn<Promise<BGGSearchResult[]>, [string]>(),
-  getGameDetails: jest.fn<Promise<BGGGameData>, [number]>(),
-  getGameData: jest.fn<Promise<BGGGameData>, [number]>() // Ajout de la méthode manquante
+  searchGames: jest.fn(),
+  getGameDetails: jest.fn(),
+  getGameData: jest.fn(), // Ajout de la méthode manquante
 })
 
 // === MOCK DATABASE CONTEXT ===
@@ -63,8 +109,7 @@ export const createMockDatabaseContext = () => ({
 // === MOCK FETCH ===
 
 export const createMockFetch = () => {
-  const mockFetch = jest.fn()
-  
+  const mockFetch = jest.fn<(url: string) => Promise<{ ok: boolean; json?: () => Promise<unknown>; text?: () => Promise<string>; }>>();
   // Configuration par défaut
   mockFetch.mockImplementation((url: string) => {
     if (url.includes('/api/templates')) {
@@ -190,7 +235,7 @@ export class MockDataBuilder {
     }
   }
   
-  static gameTemplate(overrides: any = {}) {
+  static gameTemplate(overrides: Partial<GameTemplate> = {}) {
     return {
       name: 'Mock Game',
       hasCharacters: false,
@@ -209,7 +254,7 @@ export class MockDataBuilder {
 // === ASSERTIONS PERSONNALISÉES ===
 
 export const customMatchers = {
-  toHaveValidGameTemplate: (received: any) => {
+  toHaveValidGameTemplate: (received: GameTemplate) => {
     const required = ['name', 'hasCharacters', 'hasExtensions', 'supportsCooperative', 'supportsCompetitive', 'supportsCampaign', 'defaultMode']
     const missing = required.filter(field => !(field in received))
     
@@ -226,7 +271,7 @@ export const customMatchers = {
     }
   },
   
-  toHaveValidBGGData: (received: any) => {
+  toHaveValidBGGData: (received: BGGGameData) => {
     const required = ['id', 'name', 'minPlayers', 'maxPlayers', 'playingTime']
     const missing = required.filter(field => !(field in received))
     

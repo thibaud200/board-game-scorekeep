@@ -1,17 +1,16 @@
 import { Database, generateId, DEFAULT_GAME_TEMPLATES } from './database'
-import type { Player, GameSession } from '../App'
-import { GameTemplate } from '@/types'
+import { PlayerDB, GameSessionDB, GameTemplate, GameExtensionDB } from '../types';
 import * as sql from "sql.js"
 import { logger } from '@/lib/logger';
 
 const initSqlJs = sql.default ?? sql
 
 interface SqlDatabase {
-  run(sql: string, params?: any[]): void
+  run(sql: string, params?: unknown[]): void
   prepare(sql: string): {
     step(): boolean
-    getAsObject(): any
-    bind(params: any[]): void
+    getAsObject(): Record<string, unknown>
+    bind(params: unknown[]): void
     free(): void
   }
   export(): Uint8Array
@@ -24,57 +23,59 @@ interface SqlJs {
 
 export class SQLiteDatabase implements Database {
   // Extension operations
-  async getGameExtensions(baseGameName?: string): Promise<any[]> {
+  async getGameExtensions(baseGameName?: string): Promise<GameExtensionDB[]> {
     if (!this.db) throw new Error('Database not initialized');
     let query = 'SELECT * FROM game_extensions';
-    let params: any[] = [];
+  let params: unknown[] = [];
     if (baseGameName) {
       query += ' WHERE base_game_name = ?';
       params.push(baseGameName);
     }
     const stmt = this.db.prepare(query);
     if (params.length) stmt.bind(params);
-    const extensions: any[] = [];
-      while (stmt.step()) {
-        const row = stmt.getAsObject();
-        extensions.push({
-          id: row.id,
-          name: row.name,
-          base_game_name: row.base_game_name,
-          description: row.description || undefined,
-          image: row.image || undefined,
-          min_players: row.min_players !== undefined ? Number(row.min_players) : undefined,
-          max_players: row.max_players !== undefined ? Number(row.max_players) : undefined
-        });
-      }
+    const extensions: GameExtensionDB[] = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      extensions.push({
+        id: String(row.id),
+        name: row.name as string,
+        base_game_name: row.base_game_name as string,
+        description: typeof row.description === 'string' ? row.description : undefined,
+        image: typeof row.image === 'string' ? row.image : undefined,
+        min_players: row.min_players !== undefined ? Number(row.min_players) : undefined,
+        max_players: row.max_players !== undefined ? Number(row.max_players) : undefined,
+        created_at: typeof row.created_at === 'string' ? row.created_at : ''
+      });
+    }
     stmt.free();
     return extensions;
   }
 
-  async addGameExtension(extension: { name: string; base_game_name: string; description?: string; image?: string; min_players?: number; max_players?: number }): Promise<any> {
+  async addGameExtension(extension: { name: string; base_game_name: string; description?: string; image?: string; min_players?: number; max_players?: number }): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
     const id = generateId();
-      this.db.run(`
-        INSERT OR REPLACE INTO game_extensions (
-          id, name, base_game_name, description, image, min_players, max_players
-        ) VALUES (?, ?, ?, ?, ?, ?)
-      `, [
-        id,
-        extension.name,
-        extension.base_game_name,
-        extension.description || null,
-        extension.image || null,
-        extension.min_players || null,
-        extension.max_players || null
-      ]);
+    this.db.run(`
+      INSERT OR REPLACE INTO game_extensions (
+        id, name, base_game_name, description, image, min_players, max_players, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      id,
+      extension.name,
+      extension.base_game_name,
+      extension.description || null,
+      extension.image || null,
+      extension.min_players ?? null,
+      extension.max_players ?? null,
+      new Date().toISOString()
+    ]);
     this.saveToStorage();
-    return { id, ...extension };
+    // Ne retourne rien, conforme à Database
   }
 
-  async updateGameExtension(id: string, updates: { name?: string; description?: string; image?: string; min_players?: number; max_players?: number }): Promise<any> {
+  async updateGameExtension(id: string, updates: { name?: string; description?: string; image?: string; min_players?: number; max_players?: number }): Promise<GameExtensionDB> {
     if (!this.db) throw new Error('Database not initialized');
     const sets: string[] = [];
-    const values: any[] = [];
+  const values: unknown[] = [];
     if (updates.name !== undefined) {
       sets.push('name = ?');
       values.push(updates.name);
@@ -100,7 +101,7 @@ export class SQLiteDatabase implements Database {
     this.db.run(`UPDATE game_extensions SET ${sets.join(', ')} WHERE id = ?`, values);
     this.saveToStorage();
     const extensions = await this.getGameExtensions();
-    return extensions.find(e => e.id === id);
+  return extensions.find(e => e.id === id) as GameExtensionDB;
   }
 
   async deleteGameExtension(id: string): Promise<void> {
@@ -266,7 +267,7 @@ export class SQLiteDatabase implements Database {
     
     if ('showSaveFilePicker' in window) {
       try {
-        const fileHandle = await (window as any).showSaveFilePicker({
+  const fileHandle = await (window as unknown as { showSaveFilePicker: Function }).showSaveFilePicker({
           suggestedName: this.dbPath,
           startIn: 'downloads',
           types: [{
@@ -294,7 +295,7 @@ export class SQLiteDatabase implements Database {
     
     if ('showOpenFilePicker' in window) {
       try {
-        const [fileHandle] = await (window as any).showOpenFilePicker({
+  const [fileHandle] = await (window as unknown as { showOpenFilePicker: Function }).showOpenFilePicker({
           types: [{
             description: 'Base de données SQLite',
             accept: { 'application/x-sqlite3': ['.db'] }
@@ -336,53 +337,49 @@ export class SQLiteDatabase implements Database {
   }
 
   // Player operations
-  async getPlayers(): Promise<Player[]> {
+  async getPlayers(): Promise<PlayerDB[]> {
     if (!this.db) throw new Error('Database not initialized')
 
     const stmt = this.db.prepare('SELECT * FROM players ORDER BY name')
-    const players: Player[] = []
+    const players: PlayerDB[] = []
 
     while (stmt.step()) {
       const row = stmt.getAsObject()
       players.push({
         id: row.id as string,
         name: row.name as string,
-        avatar: row.avatar as string || undefined
-      })
+        created_at: typeof row.created_at === 'string' ? row.created_at : ''
+      });
     }
 
     stmt.free()
     return players
   }
 
-  async addPlayer(player: Omit<Player, 'id'>): Promise<Player> {
+  async addPlayer(player: Omit<PlayerDB, 'id'>): Promise<PlayerDB> {
     if (!this.db) throw new Error('Database not initialized')
 
     const id = generateId()
-    const newPlayer: Player = { id, ...player }
+    const newPlayer: PlayerDB = { id, ...player }
 
     this.db.run(
-      'INSERT INTO players (id, name, avatar) VALUES (?, ?, ?)',
-      [id, player.name, player.avatar || null]
+      'INSERT INTO players (id, name) VALUES (?, ?)',
+      [id, player.name]
     )
 
     this.saveToStorage()
     return newPlayer
   }
 
-  async updatePlayer(id: string, updates: Partial<Player>): Promise<Player> {
+  async updatePlayer(id: string, updates: Partial<PlayerDB>): Promise<PlayerDB> {
     if (!this.db) throw new Error('Database not initialized')
 
-    const sets: string[] = []
-    const values: any[] = []
+  const sets: string[] = []
+  const values: (string | number | null)[] = []
 
     if (updates.name !== undefined) {
       sets.push('name = ?')
       values.push(updates.name)
-    }
-    if (updates.avatar !== undefined) {
-      sets.push('avatar = ?')
-      values.push(updates.avatar)
     }
 
     if (sets.length === 0) {
@@ -403,7 +400,7 @@ export class SQLiteDatabase implements Database {
       return {
         id: row.id as string,
         name: row.name as string,
-        avatar: row.avatar as string || undefined
+        created_at: typeof row.created_at === 'string' ? row.created_at : ''
       }
     }
 
@@ -419,82 +416,93 @@ export class SQLiteDatabase implements Database {
   }
 
   // Game History operations
-  async getGameHistory(): Promise<GameSession[]> {
+  async getGameHistory(): Promise<GameSessionDB[]> {
     if (!this.db) throw new Error('Database not initialized')
 
     const stmt = this.db.prepare('SELECT * FROM game_sessions ORDER BY created_at DESC')
-    const sessions: GameSession[] = []
+    const sessions: GameSessionDB[] = [];
 
     while (stmt.step()) {
-      const row = stmt.getAsObject()
+      const row = stmt.getAsObject();
       sessions.push({
         id: row.id as string,
-        gameTemplate: row.game_type as string, // Map game_type to gameTemplate for compatibility
-        gameMode: row.game_mode as 'cooperative' | 'competitive' | 'campaign' || 'competitive',
-        isCooperative: Boolean(row.is_cooperative),
+        game_type: row.game_type as string,
+        is_cooperative: Boolean(row.is_cooperative),
+        game_mode: ['cooperative', 'competitive', 'campaign'].includes(row.game_mode as string)
+          ? (row.game_mode as 'cooperative' | 'competitive' | 'campaign')
+          : 'competitive',
         players: JSON.parse(row.players as string),
         scores: JSON.parse(row.scores as string),
         characters: row.characters ? JSON.parse(row.characters as string) : undefined,
         extensions: row.extensions ? JSON.parse(row.extensions as string) : undefined,
         winner: (row.winner as string) || undefined,
-        winCondition: row.win_condition as 'highest' | 'lowest' | 'cooperative',
+        win_condition: ['highest', 'lowest', 'cooperative'].includes(row.win_condition as string)
+          ? (row.win_condition as 'highest' | 'lowest' | 'cooperative')
+          : undefined,
         date: row.date as string,
-        startTime: (row.start_time as string) || '',
-        endTime: (row.end_time as string) || undefined,
-        duration: (row.duration as number) || undefined,
-        completed: Boolean(row.completed)
-      })
+        start_time: (row.start_time as string) || '',
+        end_time: (row.end_time as string) || undefined,
+        duration: typeof row.duration === 'string' ? row.duration : undefined,
+        completed: Boolean(row.completed),
+        coop_result: row.coop_result as string,
+        dead_characters: row.dead_characters ? JSON.parse(row.dead_characters as string) : undefined,
+        new_character_names: row.new_character_names ? JSON.parse(row.new_character_names as string) : undefined,
+        character_history: row.character_history ? JSON.parse(row.character_history as string) : undefined,
+        created_at: typeof row.created_at === 'string' ? row.created_at : ''
+      });
     }
 
-    stmt.free()
-    return sessions
+    stmt.free();
+    return sessions;
   }
 
-  async addGameSession(session: Omit<GameSession, 'id'>): Promise<GameSession> {
+  async addGameSession(session: Omit<GameSessionDB, 'id'>): Promise<GameSessionDB> {
     if (!this.db) throw new Error('Database not initialized')
 
-    const id = generateId()
-    const newSession: GameSession = { id, ...session }
-
+    const id = generateId();
     this.db.run(`
       INSERT INTO game_sessions (
-        id, game_type, is_cooperative, players, scores, characters, extensions,
-        winner, win_condition, date, start_time, end_time, duration, completed
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, game_type, is_cooperative, game_mode, players, scores, characters, extensions, winner, win_condition, date, start_time, end_time, duration, completed, coop_result, dead_characters, new_character_names, character_history, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       id,
-  session.gameTemplate,
-      session.isCooperative ? 1 : 0,
+      session.game_type,
+      session.is_cooperative ? 1 : 0,
+      session.game_mode,
       JSON.stringify(session.players),
       JSON.stringify(session.scores),
       session.characters ? JSON.stringify(session.characters) : null,
       session.extensions ? JSON.stringify(session.extensions) : null,
       session.winner || null,
-      session.winCondition,
-      session.date,
-      session.startTime || null,
-      session.endTime || null,
+      session.win_condition || null,
+      session.date || null,
+      session.start_time || null,
+      session.end_time || null,
       session.duration || null,
-      session.completed ? 1 : 0
-    ])
-
-    this.saveToStorage()
-    return newSession
+      session.completed ? 1 : 0,
+      session.coop_result || null,
+      session.dead_characters ? JSON.stringify(session.dead_characters) : null,
+      session.new_character_names ? JSON.stringify(session.new_character_names) : null,
+      session.character_history ? JSON.stringify(session.character_history) : null,
+      new Date().toISOString()
+    ]);
+    this.saveToStorage();
+    return { id, ...session, created_at: new Date().toISOString() };
   }
 
-  async updateGameSession(id: string, updates: Partial<GameSession>): Promise<GameSession> {
+  async updateGameSession(id: string, updates: Partial<GameSessionDB>): Promise<GameSessionDB> {
     if (!this.db) throw new Error('Database not initialized')
 
-    const sets: string[] = []
-    const values: any[] = []
+  const sets: string[] = []
+  const values: (string | number | boolean | null)[] = []
 
-  if (updates.gameTemplate !== undefined) {
-      sets.push('game_type = ?')
-  values.push(updates.gameTemplate)
+    if (updates.game_type !== undefined) {
+      sets.push('game_type = ?');
+      values.push(updates.game_type);
     }
-    if (updates.isCooperative !== undefined) {
-      sets.push('is_cooperative = ?')
-      values.push(updates.isCooperative ? 1 : 0)
+    if (updates.is_cooperative !== undefined) {
+      sets.push('is_cooperative = ?');
+      values.push(updates.is_cooperative ? 1 : 0);
     }
     if (updates.players !== undefined) {
       sets.push('players = ?')
@@ -516,17 +524,17 @@ export class SQLiteDatabase implements Database {
       sets.push('winner = ?')
       values.push(updates.winner)
     }
-    if (updates.winCondition !== undefined) {
-      sets.push('win_condition = ?')
-      values.push(updates.winCondition)
+    if (updates.win_condition !== undefined) {
+      sets.push('win_condition = ?');
+      values.push(updates.win_condition);
     }
-    if (updates.startTime !== undefined) {
-      sets.push('start_time = ?')
-      values.push(updates.startTime)
+    if (updates.start_time !== undefined) {
+      sets.push('start_time = ?');
+      values.push(updates.start_time);
     }
-    if (updates.endTime !== undefined) {
-      sets.push('end_time = ?')
-      values.push(updates.endTime)
+    if (updates.end_time !== undefined) {
+      sets.push('end_time = ?');
+      values.push(updates.end_time);
     }
     if (updates.duration !== undefined) {
       sets.push('duration = ?')
@@ -569,7 +577,7 @@ export class SQLiteDatabase implements Database {
     while (stmt.step()) {
       const row = stmt.getAsObject();
       templates.push({
-        id: row.id,
+        id: String(row.id),
         name: row.name as string,
         hasCharacters: Boolean(row.has_characters),
         characters: row.characters ? JSON.parse(row.characters as string) : undefined,
@@ -619,8 +627,8 @@ export class SQLiteDatabase implements Database {
   async updateGameTemplate(id: string, updates: Partial<GameTemplate>): Promise<GameTemplate> {
     if (!this.db) throw new Error('Database not initialized')
 
-    const sets: string[] = []
-    const values: any[] = []
+  const sets: string[] = []
+  const values: (string | number | boolean | null)[] = []
 
     if (updates.id_bgg !== undefined) {
       sets.push('id_bgg = ?');
@@ -639,9 +647,9 @@ export class SQLiteDatabase implements Database {
       sets.push('is_cooperative_by_default = ?');
       values.push(updates.isCooperativeByDefault ? 1 : 0);
     }
-    if ((updates as any).base_game_name !== undefined) {
+    if (typeof (updates as Partial<GameTemplate>).base_game_name !== 'undefined') {
       sets.push('base_game_name = ?');
-      values.push((updates as any).base_game_name);
+  values.push((updates as Partial<GameTemplate>).base_game_name ?? null);
     }
     if (updates.min_players !== undefined) {
       sets.push('min_players = ?');
@@ -689,7 +697,7 @@ export class SQLiteDatabase implements Database {
   }
 
   // Current Game operations
-  async getCurrentGame(): Promise<GameSession | null> {
+  async getCurrentGame(): Promise<GameSessionDB | null> {
     if (!this.db) throw new Error('Database not initialized')
 
     const stmt = this.db.prepare('SELECT game_data FROM current_game WHERE id = 1')
@@ -705,7 +713,7 @@ export class SQLiteDatabase implements Database {
     return null
   }
 
-  async setCurrentGame(game: GameSession | null): Promise<void> {
+  async setCurrentGame(game: GameSessionDB | null): Promise<void> {
     if (!this.db) throw new Error('Database not initialized')
 
     this.db.run(

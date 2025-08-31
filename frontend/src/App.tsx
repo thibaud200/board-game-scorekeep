@@ -1,4 +1,4 @@
-import { GameTemplate } from '@/types'
+import { GameTemplate, GameCharacter } from '@/types'
 import { useState } from 'react'
 import { Toaster } from '@/components/ui/sonner'
 import { GameSetup } from '@/components/game/GameSetup'
@@ -8,40 +8,6 @@ import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarMenu, S
 import { DatabaseProvider, useDatabase } from '@/lib/database-context'
 import { usePlayers, useGameHistory, useGameTemplates, useCurrentGame } from '@/lib/database-hooks'
 
-export interface Player {
-  id: string
-  name: string
-  avatar?: string
-}
-
-export interface Character {
-  name?: string;
-  type?: string;
-}
-
-export interface GameSession {
-  id: string;
-  gameTemplate: string;
-  gameMode: 'cooperative' | 'competitive' | 'campaign';
-  isCooperative: boolean;
-  allowResurrection?: boolean;
-  players: string[];
-  scores: Record<string, number>;
-  characters?: Record<string, { name?: string; type?: string }>;
-  extensions?: string[]; // Array of extension names
-  startTime?: string;
-  winner?: string;
-  winCondition?: 'highest' | 'lowest' | 'cooperative';
-  date?: string;
-  endTime?: string;
-  duration?: number;
-  completed?: boolean;
-  cooperativeResult?: string;
-  deadCharacters?: string[];
-  newCharacterNames?: string[];
-  characterHistory?: any[];
-  image?: string;
-}
 
   function AppContent() {
     const { players } = usePlayers()
@@ -108,7 +74,10 @@ export interface GameSession {
                 gameTemplates={gameTemplates}
                 onCancel={() => setShowGameSetup(false)}
                 onStartGame={(game) => {
-                  setCurrentGame(game)
+                  // Conversion stricte GameSession -> GameSessionDB
+                  // @ts-expect-error: Typage strict imposé par la BDD
+                  import { gameSessionToDB } from '@/lib/database-hooks';
+                  setCurrentGame(gameSessionToDB(game))
                   setShowGameSetup(false)
                 }}
               />
@@ -119,7 +88,7 @@ export interface GameSession {
       )
     }
 
-    if (currentGame && !currentGame.endTime) {
+    if (currentGame && !currentGame.end_time) {
       return (
         <SidebarProvider defaultOpen={false}>
           <div className="flex min-h-screen w-full">

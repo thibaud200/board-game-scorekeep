@@ -3,8 +3,49 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
-import { ArrowLeft, Trophy, Users, GameController, Calendar, Clock, Eye, Skull, User } from '@phosphor-icons/react'
-import { Player, GameSession } from '@/App'
+import { ArrowLeft, Trophy, Users, GameController, Calendar, Clock, Eye, Skull } from '@phosphor-icons/react'
+import { Player, GameSession, GameTemplate } from '@/types'
+import type { CharacterEvent } from '@/types'
+
+
+interface CharacterProgression {
+  initialCharacter: string;
+  initialType?: string;
+  died: boolean;
+  replacements: Array<{ name: string; type?: string }>;
+}
+
+// Typage strict pour la progression de personnage
+// (Déjà défini plus haut)
+
+function getCharacterProgressions(characterHistory: CharacterEvent[] | undefined, playerId: string): CharacterProgression[] {
+  if (!characterHistory) return [];
+  const playerEvents = characterHistory.filter(event => event.details === String(playerId));
+  const characterProgressions: CharacterProgression[] = [];
+  let currentProgression: CharacterProgression | null = null;
+  playerEvents.forEach(event => {
+    if (event.eventType === 'created') {
+      currentProgression = {
+        initialCharacter: event.characterId ?? '',
+        initialType: undefined,
+        died: false,
+        replacements: []
+      };
+      characterProgressions.push(currentProgression);
+    } else if (event.eventType === 'died' && currentProgression) {
+      currentProgression.died = true;
+    } else if (event.eventType === 'changed' && currentProgression) {
+      currentProgression.replacements.push({
+        name: event.characterId ?? '',
+        type: undefined
+      });
+    }
+  });
+  return characterProgressions;
+}
+
+// Typage strict pour la progression de personnage
+// (Déjà défini plus haut)
 import { useGameHistory } from '@/lib/database-hooks'
 
 interface PlayerStatsDetailProps {
@@ -14,7 +55,6 @@ interface PlayerStatsDetailProps {
 
 export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
   const { gameHistory } = useGameHistory()
-
   const playerGames = gameHistory.filter(game => 
     game.completed && game.players.includes(player.id)
   )
@@ -28,13 +68,14 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
       .slice(0, 2)
   }
 
+
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'Unknown'
+    if (!dateString) return 'Unknown';
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
-    })
+    });
   }
 
   const formatDuration = (duration?: string | number) => {
@@ -58,190 +99,67 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
   const totalWins = wins + coopWins
   const winRate = totalGames > 0 ? ((totalWins / totalGames) * 100).toFixed(1) : '0.0'
   
-  const deathCount = playerGames.filter(game => game.deadCharacters?.[player.id]).length
+  const deathCount = playerGames.filter(game => {
+  const deadCharacters: Record<string, boolean> | undefined = game.deadCharacters;
+  return !!deadCharacters && !!deadCharacters[String(player.id)];
+  }).length;
   const averageScore = competitiveGames.length > 0 
     ? (competitiveGames.reduce((sum, game) => sum + (game.scores[player.id] || 0), 0) / competitiveGames.length).toFixed(1)
     : '0.0'
-  
-  const totalDuration = playerGames.reduce((sum, game) => {
-    const duration = typeof game.duration === 'string' ? parseFloat(game.duration) : (game.duration || 0)
-    return sum + duration
-  }, 0)
-  const averageDuration = totalGames > 0 ? Math.round(totalDuration / totalGames) : 0
-
-  // Game types played
-  const gameTypes = [...new Set(playerGames.map(game => game.gameTemplate))]
-
-  const GameDetailDialog = ({ game }: { game: GameSession }) => {
-    const winner = game.winner ? gameHistory.find(g => g.players.includes(game.winner!)) : null
-    const gamePlayers = game.players.map(id => {
-      // Find player name from the game context or current players
-      return { id, name: id === player.id ? player.name : `Player ${id}` }
-    })
-    
-    return (
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <GameController size={20} />
-            {game.gameTemplate}
-          </DialogTitle>
-          <DialogDescription>
-            Detailed view of this game session
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Game Info */}
-          <div className="grid grid-cols-2 gap-4">
+  function renderGames() {
+    return playerGames.slice().reverse().map((game) => {
+      const isWinner = game.winner === player.id;
+      const isCoopVictory = game.isCooperative && game.cooperativeResult === 'victory';
+      const isDead = !!game.deadCharacters && !!game.deadCharacters[String(player.id)];
+      const score = game.scores[player.id] || 0;
+      return (
+        <div key={game.id} className="flex items-center justify-between p-4 border rounded-lg">
+          <div className="flex items-center gap-4">
             <div>
-              <div className="text-sm text-muted-foreground">Date</div>
-              <div className="font-medium">{formatDate(game.date)}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Duration</div>
-              <div className="font-medium">{formatDuration(game.duration)}</div>
-            </div>
-            <div>
-              <div className="text-sm text-muted-foreground">Mode</div>
-              <div className="font-medium">{game.isCooperative ? 'Cooperative' : 'Competitive'}</div>
-            </div>
-            {game.isCooperative && (
-              <div>
-                <div className="text-sm text-muted-foreground">Result</div>
-                <Badge variant={game.cooperativeResult === 'victory' ? 'default' : 'destructive'}>
-                  {game.cooperativeResult === 'victory' ? 'Victory' : 'Defeat'}
-                </Badge>
+              <div className="font-medium flex items-center gap-2">
+                {game.gameTemplate}
+                {(isWinner || isCoopVictory) && <Trophy size={16} className="text-yellow-500" />}
+                {isDead && <Skull size={16} className="text-red-500" />}
               </div>
-            )}
-          </div>
-
-          {/* Extensions utilisées */}
-          {Array.isArray(game.extensions) && game.extensions.length > 0 && (
-            <div>
-              <div className="text-sm text-muted-foreground mb-1">Extensions utilisées</div>
-              <div className="flex flex-wrap gap-2">
-                {game.extensions.map((ext, idx) => (
-                  <Badge key={idx} variant="outline">{ext}</Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Character History */}
-          {game.characterHistory && game.characterHistory.length > 0 && (
-            <div>
-              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <User size={16} />
-                Character History
-              </h4>
-              <div className="space-y-2">
-                {(() => {
-                  const playerEvents = game.characterHistory.filter(event => event.playerId === player.id)
-                  
-                  // Group events by character progression
-                  const characterProgressions: Array<{
-                    initialCharacter: string
-                    initialType?: string
-                    died: boolean
-                    replacements: Array<{name: string, type?: string}>
-                  }> = []
-                  
-                  let currentProgression: any = null
-                  
-                  playerEvents.forEach(event => {
-                    if (event.eventType === 'initial') {
-                      // Start a new progression
-                      currentProgression = {
-                        initialCharacter: event.characterName,
-                        initialType: event.characterType,
-                        died: false,
-                        replacements: []
-                      }
-                      characterProgressions.push(currentProgression)
-                    } else if (event.eventType === 'death' && currentProgression) {
-                      currentProgression.died = true
-                    } else if (event.eventType === 'replacement' && currentProgression) {
-                      currentProgression.replacements.push({
-                        name: event.characterName,
-                        type: event.characterType
-                      })
-                    }
-                  })
-                  
-                  return characterProgressions.map((progression, index) => (
-                    <div key={index} className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg text-sm">
-                      <div className="flex-shrink-0">
-                        🎭
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium">
-                          {progression.initialCharacter}
-                          {progression.initialType && ` (${progression.initialType})`}
-                          {progression.died && progression.replacements.length === 0 && (
-                            <span className="text-red-600 ml-2">💀 Died</span>
-                          )}
-                          {progression.replacements.length > 0 && (
-                            <span className="text-orange-600 ml-2">
-                              → {progression.replacements.map(r => 
-                                `${r.name}${r.type ? ` (${r.type})` : ''}`
-                              ).join(' → ')}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {progression.replacements.length > 0 
-                            ? `Character progression (${progression.replacements.length + 1} characters)`
-                            : progression.died 
-                              ? 'Character died during the game'
-                              : 'Survived the entire game'
-                          }
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                })()}
-              </div>
-            </div>
-          )}
-
-          {/* Player's performance */}
-          <div>
-            <h3 className="font-medium mb-3">Your Performance</h3>
-            <div className="p-4 border rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className={game.deadCharacters?.[player.id] ? 'bg-red-100 text-red-600' : ''}>
-                      {getPlayerInitials(player.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{player.name}</span>
-                      {game.deadCharacters?.[player.id] && <Skull size={16} className="text-red-500" />}
-                      {game.winner === player.id && <Trophy size={16} className="text-yellow-500" />}
-                    </div>
-                    {game.newCharacterNames?.[player.id] && (
-                      <div className="text-sm text-muted-foreground">
-                        New character: {game.newCharacterNames[player.id]}
-                      </div>
-                    )}
-                  </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Calendar size={12} />
+                  {formatDate(game.date)}
                 </div>
-                
-                {!game.isCooperative && (
-                  <div className="text-right">
-                    <div className="font-bold text-lg">{game.scores[player.id] || 0}</div>
-                    <div className="text-sm text-muted-foreground">points</div>
+                <div className="flex items-center gap-1">
+                  <Users size={12} />
+                  {game.players.length} players
+                </div>
+                {game.duration && (
+                  <div className="flex items-center gap-1">
+                    <Clock size={12} />
+                    {formatDuration(game.duration)}
                   </div>
                 )}
               </div>
             </div>
           </div>
+          <div className="flex items-center gap-3">
+            {!game.isCooperative && (
+              <div className="text-right">
+                <div className="font-bold">{score}</div>
+                <div className="text-xs text-muted-foreground">points</div>
+              </div>
+            )}
+            <Badge variant={
+              game.isCooperative 
+                ? (game.cooperativeResult === 'victory' ? 'default' : 'destructive')
+                : (isWinner ? 'default' : 'secondary')
+            }>
+              {game.isCooperative 
+                ? (game.cooperativeResult === 'victory' ? 'Victory' : 'Defeat')
+                : (isWinner ? 'Won' : 'Lost')
+              }
+            </Badge>
+          </div>
         </div>
-      </DialogContent>
-    )
+      );
+    });
   }
 
   if (totalGames === 0) {
@@ -256,7 +174,6 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
             <p className="text-muted-foreground">Player Statistics</p>
           </div>
         </div>
-
         <Card>
           <CardContent className="py-12 text-center">
             <Trophy size={48} className="mx-auto mb-4 text-muted-foreground" />
@@ -265,7 +182,7 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -279,8 +196,6 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
           <p className="text-muted-foreground">Player Statistics</p>
         </div>
       </div>
-
-      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
@@ -293,7 +208,6 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -306,7 +220,6 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -319,7 +232,6 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -333,101 +245,33 @@ export function PlayerStatsDetail({ player, onBack }: PlayerStatsDetailProps) {
           </CardContent>
         </Card>
       </div>
-
-      {/* Game Types */}
       <Card>
         <CardHeader>
-          <CardTitle>Game Types Played ({gameTypes.length})</CardTitle>
+          <CardTitle>Game Types Played ({gameHistory.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            {gameTypes.map(gameType => {
-              const gameCount = playerGames.filter(g => g.gameTemplate === gameType).length
+            {Array.from(new Set(playerGames.map(game => game.gameTemplate))).map(templateName => {
+              const gameCount = playerGames.filter(g => g.gameTemplate === templateName).length;
               return (
-                <Badge key={gameType} variant="outline">
-                  {gameType} ({gameCount})
+                <Badge key={templateName} variant="outline">
+                  {templateName} ({gameCount})
                 </Badge>
-              )
+              );
             })}
           </div>
         </CardContent>
       </Card>
-
-      {/* Recent Games */}
       <Card>
         <CardHeader>
           <CardTitle>All Games ({totalGames})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {playerGames.reverse().map((game) => {
-              const isWinner = game.winner === player.id
-              const isCoopVictory = game.isCooperative && game.cooperativeResult === 'victory'
-              const isDead = game.deadCharacters?.[player.id]
-              const score = game.scores[player.id] || 0
-
-              return (
-                <div key={game.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <div className="font-medium flex items-center gap-2">
-                        {game.gameTemplate}
-                        {(isWinner || isCoopVictory) && <Trophy size={16} className="text-yellow-500" />}
-                        {isDead && <Skull size={16} className="text-red-500" />}
-                      </div>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <Calendar size={12} />
-                          {formatDate(game.date)}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Users size={12} />
-                          {game.players.length} players
-                        </div>
-                        {game.duration && (
-                          <div className="flex items-center gap-1">
-                            <Clock size={12} />
-                            {formatDuration(game.duration)}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    {!game.isCooperative && (
-                      <div className="text-right">
-                        <div className="font-bold">{score}</div>
-                        <div className="text-xs text-muted-foreground">points</div>
-                      </div>
-                    )}
-                    
-                    <Badge variant={
-                      game.isCooperative 
-                        ? (game.cooperativeResult === 'victory' ? 'default' : 'destructive')
-                        : (isWinner ? 'default' : 'secondary')
-                    }>
-                      {game.isCooperative 
-                        ? (game.cooperativeResult === 'victory' ? 'Victory' : 'Defeat')
-                        : (isWinner ? 'Won' : 'Lost')
-                      }
-                    </Badge>
-
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Eye size={16} />
-                        </Button>
-                      </DialogTrigger>
-                      <GameDetailDialog game={game} />
-                    </Dialog>
-                  </div>
-                </div>
-              )
-            })}
+            {renderGames()}
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

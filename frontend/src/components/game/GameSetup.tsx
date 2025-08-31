@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Play, Users, GameController, Clock, Trophy, Bookmark, Asterisk } from '@phosphor-icons/react';
 import type { GameTemplate } from '@/types';
-import type { Player, GameSession } from '@/App';
+import type { Player, GameSession, GameExtensionDB } from '@/types';
 
 interface GameSetupProps {
   players: Player[]
@@ -43,11 +43,11 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
     const template = gameTemplates.find(t => t.name === value)
     if (template) {
       // Set default mode from template
-      const allowedModes = ['cooperative', 'competitive', 'campaign'] as const;
-      const defaultMode = allowedModes.includes(template.defaultMode as any)
-        ? template.defaultMode
+      const allowedModes: Array<'cooperative' | 'competitive' | 'campaign'> = ['cooperative', 'competitive', 'campaign'];
+      const defaultMode = allowedModes.includes(template.defaultMode as 'cooperative' | 'competitive' | 'campaign')
+        ? template.defaultMode as 'cooperative' | 'competitive' | 'campaign'
         : 'competitive';
-      setGameMode(defaultMode as 'cooperative' | 'competitive' | 'campaign');
+      setGameMode(defaultMode);
       setIsCooperative(defaultMode === 'cooperative')
       setWinCondition(defaultMode === 'cooperative' ? 'cooperative' : 'highest')
       setSelectedExtensions([])
@@ -166,7 +166,7 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
 
   // --- Extensions fetcher ---
   function useExtensions(baseGameName: string) {
-    const [extensions, setExtensions] = useState<any[]>([]);
+    const [extensions, setExtensions] = useState<GameExtensionDB[]>([]);
     useEffect(() => {
       if (!baseGameName) {
         setExtensions([]);
@@ -397,20 +397,20 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                             />
                             <span className="text-sm font-medium flex-1">{extension.name}</span>
                           </div>
-                          {extension.image && (
-                            <img src={extension.image} alt="Extension" className="max-h-16 rounded" />
-                          )}
-                          {extension.description && (
-                            <div className="text-xs text-muted-foreground">{extension.description}</div>
-                          )}
-                          <div className="flex gap-2 text-xs text-muted-foreground">
-                            {extension.min_players && (
-                              <span>Min players: {extension.min_players}</span>
-                            )}
-                            {extension.max_players && (
-                              <span>Max players: {extension.max_players}</span>
-                            )}
-                          </div>
+                                  {extension.image && (
+                                    <img src={extension.image} alt="Extension" className="max-h-16 rounded" />
+                                  )}
+                                  {extension.description && (
+                                    <div className="text-xs text-muted-foreground">{extension.description}</div>
+                                  )}
+                                  <div className="flex gap-2 text-xs text-muted-foreground">
+                                    {extension.min_players && (
+                                      <span>Min players: {extension.min_players}</span>
+                                    )}
+                                    {extension.max_players && (
+                                      <span>Max players: {extension.max_players}</span>
+                                    )}
+                                  </div>
                         </div>
                       ))}
                     </div>
@@ -482,8 +482,8 @@ export function GameSetup({ players, gameTemplates, onCancel, onStartGame }: Gam
                                 </SelectTrigger>
                                 <SelectContent>
                                   {selectedTemplate.characters.map(character => (
-                                    <SelectItem key={character} value={character}>
-                                      {character}
+                                    <SelectItem key={character.id} value={character.id}>
+                                      {character.name}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>

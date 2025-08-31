@@ -118,15 +118,15 @@ function ChartTooltipContent({
   labelKey,
 }: {
   active?: boolean
-  payload?: any[]
+  payload?: Array<Record<string, unknown>>
   className?: string
   indicator?: "line" | "dot" | "dashed"
   hideLabel?: boolean
   hideIndicator?: boolean
   label?: string
-  labelFormatter?: (label: any, payload: any[]) => React.ReactNode
+  labelFormatter?: (label: string | number, payload: Array<Record<string, unknown>>) => React.ReactNode
   labelClassName?: string
-  formatter?: (value: any, name: any, item: any, index: number, payload?: any) => React.ReactNode
+  formatter?: (value: string | number, name: string, item: Record<string, unknown>, index: number, payload?: Array<Record<string, unknown>>) => React.ReactNode
   color?: string
   nameKey?: string
   labelKey?: string
@@ -138,27 +138,29 @@ function ChartTooltipContent({
       return null
     }
 
-    const [item] = payload
-    const key = `${labelKey || item?.dataKey || item?.name || "value"}`
-    const itemConfig = getPayloadConfigFromPayload(config, item, key)
-    const value =
-      !labelKey && typeof label === "string"
-        ? config[label as keyof typeof config]?.label || label
-        : itemConfig?.label
+    const [item] = payload;
+    const key = `${labelKey || item?.dataKey || item?.name || "value"}`;
+    const itemConfig = getPayloadConfigFromPayload(config, item, key);
+    let value: string | number = "";
+    if (!labelKey && typeof label === "string") {
+      value = (config[label as keyof typeof config]?.label as string | number) || label;
+    } else if (typeof itemConfig?.label === "string" || typeof itemConfig?.label === "number") {
+      value = itemConfig.label;
+    }
 
-    if (labelFormatter) {
+    if (labelFormatter && (typeof value === "string" || typeof value === "number")) {
       return (
         <div className={cn("font-medium", labelClassName)}>
           {labelFormatter(value, payload)}
         </div>
-      )
+      );
     }
 
     if (!value) {
-      return null
+      return null;
     }
 
-    return <div className={cn("font-medium", labelClassName)}>{value}</div>
+    return <div className={cn("font-medium", labelClassName)}>{value}</div>;
   }, [
     label,
     labelFormatter,
@@ -187,64 +189,68 @@ function ChartTooltipContent({
         {payload.map((item, index) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`
           const itemConfig = getPayloadConfigFromPayload(config, item, key)
-          const indicatorColor = color || item.payload.fill || item.color
+          const indicatorColor = color ||
+            (item.payload && typeof item.payload === "object" && "fill" in item.payload
+              ? (item.payload as { fill?: string }).fill
+              : undefined) ||
+            item.color;
 
           return (
             <div
-              key={item.dataKey}
+              key={String(item.dataKey)}
               className={cn(
                 "[&>svg]:text-muted-foreground flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5",
                 indicator === "dot" && "items-center"
               )}
             >
-              {formatter && item?.value !== undefined && item.name ? (
-                formatter(item.value, item.name, item, index, item.payload)
-              ) : (
-                <>
-                  {itemConfig?.icon ? (
-                    <itemConfig.icon />
-                  ) : (
-                    !hideIndicator && (
-                      <div
-                        className={cn(
-                          "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)",
-                          {
-                            "h-2.5 w-2.5": indicator === "dot",
-                            "w-1": indicator === "line",
-                            "w-0 border-[1.5px] border-dashed bg-transparent":
-                              indicator === "dashed",
-                            "my-0.5": nestLabel && indicator === "dashed",
+              {formatter && (typeof item.value === "string" || typeof item.value === "number") && typeof item.name === "string"
+                ? formatter(item.value, item.name, item, index, item.payload as Array<Record<string, unknown>>)
+                : (
+                  <>
+                    {itemConfig?.icon ? (
+                      <itemConfig.icon />
+                    ) : (
+                      !hideIndicator && (
+                        <div
+                          className={cn(
+                            "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)",
+                            {
+                              "h-2.5 w-2.5": indicator === "dot",
+                              "w-1": indicator === "line",
+                              "w-0 border-[1.5px] border-dashed bg-transparent":
+                                indicator === "dashed",
+                              "my-0.5": nestLabel && indicator === "dashed",
+                            }
+                          )}
+                          style={
+                            {
+                              "--color-bg": indicatorColor,
+                              "--color-border": indicatorColor,
+                            } as CSSProperties
                           }
-                        )}
-                        style={
-                          {
-                            "--color-bg": indicatorColor,
-                            "--color-border": indicatorColor,
-                          } as CSSProperties
-                        }
-                      />
-                    )
-                  )}
-                  <div
-                    className={cn(
-                      "flex flex-1 justify-between leading-none",
-                      nestLabel ? "items-end" : "items-center"
+                        />
+                      )
                     )}
-                  >
-                    <div className="grid gap-1.5">
-                      {nestLabel ? tooltipLabel : null}
-                      <span className="text-muted-foreground">
-                        {itemConfig?.label || item.name}
-                      </span>
+                    <div
+                      className={cn(
+                        "flex flex-1 justify-between leading-none",
+                        nestLabel ? "items-end" : "items-center"
+                      )}
+                    >
+                      <div className="grid gap-1.5">
+                        {nestLabel ? tooltipLabel : null}
+                        <span className="text-muted-foreground">
+                          {String(itemConfig?.label || item.name)}
+                        </span>
+                      </div>
+                      {(typeof item.value === "number" || typeof item.value === "string") && (
+                        <span className="text-foreground font-mono font-medium tabular-nums">
+                          {item.value.toLocaleString()}
+                        </span>
+                      )}
                     </div>
-                    {item.value && (
-                      <span className="text-foreground font-mono font-medium tabular-nums">
-                        {item.value.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                </>
-              )}
+                  </>
+                )}
             </div>
           )
         })}
@@ -262,7 +268,7 @@ function ChartLegendContent({
   verticalAlign = "bottom",
   nameKey,
 }: ComponentProps<"div"> & {
-  payload?: any[]
+  payload?: Array<Record<string, unknown>>
   verticalAlign?: "top" | "bottom"
   hideIcon?: boolean
   nameKey?: string
@@ -270,7 +276,7 @@ function ChartLegendContent({
   const { config } = useChart()
 
   if (!payload?.length) {
-    return null
+    return null;
   }
 
   return (
@@ -282,12 +288,12 @@ function ChartLegendContent({
       )}
     >
       {payload.map((item) => {
-        const key = `${nameKey || item.dataKey || "value"}`
-        const itemConfig = getPayloadConfigFromPayload(config, item, key)
+        const key = `${nameKey || item.dataKey || "value"}`;
+        const itemConfig = getPayloadConfigFromPayload(config, item, key);
 
         return (
           <div
-            key={item.value}
+            key={String(item.value)}
             className={cn(
               "[&>svg]:text-muted-foreground flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3"
             )}
@@ -298,16 +304,16 @@ function ChartLegendContent({
               <div
                 className="h-2 w-2 shrink-0 rounded-[2px]"
                 style={{
-                  backgroundColor: item.color,
+                  backgroundColor: item.color as string,
                 }}
               />
             )}
             {itemConfig?.label}
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
 // Helper to extract item config from a payload.

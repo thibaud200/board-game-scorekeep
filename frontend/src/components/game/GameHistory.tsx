@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Trophy, Calendar, Users, Trash, Clock, GameController, Eye, Skull } from '@phosphor-icons/react'
-import { Player, GameSession } from '@/App'
+import { Player, GameSession } from '@/types'
 import { useGameHistory } from '@/lib/database-hooks'
 import { toast } from 'sonner'
 import { useState } from 'react'
@@ -76,7 +76,7 @@ export function GameHistory({ players }: GameHistoryProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GameController size={20} />
-            {game.gameType}
+            {game.gameMode}
           </DialogTitle>
         </DialogHeader>
         
@@ -210,7 +210,7 @@ export function GameHistory({ players }: GameHistoryProps) {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      {game.gameType}
+                      {game.gameMode}
                       {game.isCooperative ? (
                         <Badge 
                           variant={game.cooperativeResult === 'victory' ? 'default' : 'destructive'} 

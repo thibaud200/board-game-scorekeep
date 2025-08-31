@@ -27,7 +27,7 @@ export function GamesPlayedSection({ onBack }: GamesPlayedSectionProps) {
   
   // Group games by type and calculate statistics
   const gameTypeStats = completedGames.reduce((acc, game) => {
-    const gameType = game.gameType || game.gameTemplate || 'Unknown'
+    const gameType = game.gameMode || game.gameTemplate || 'Unknown'
     if (!acc[gameType]) {
       acc[gameType] = {
         gameType: gameType,

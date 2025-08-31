@@ -1,29 +1,88 @@
-import { useState, useEffect } from 'react'
-import { useDatabase } from './database-context'
-import { GameTemplate } from '@/types'
-import { logger } from '@/lib/logger';
+import type { PlayerDB, GameSessionDB, GameTemplateDB, GameExtensionDB, GameSession, Player, GameCharacter, CharacterEvent } from '../types';
+/**
+ * Convertit un GameSession (frontend) en GameSessionDB (backend/DB)
+export function useGameHistory() {
+  const { db } = useDatabase();
+  const [gameHistory, setGameHistory] = useState<GameSession[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-// Hook for players data
-export function usePlayers() {
-  const { db } = useDatabase()
-  const [players, setPlayers] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  const refreshPlayers = async () => {
-    if (!db) {
-      // Si pas de db, fallback localStorage direct
-      const local = window.localStorage.getItem('players')
-      if (local) {
-        setPlayers(JSON.parse(local))
-        console.warn('Fallback localStorage activé pour les joueurs (pas de db).')
-      } else {
-        setPlayers([])
-      }
-      setIsLoading(false)
-      return
-    }
+  const refreshGameHistory = async () => {
+    if (!db) return;
     try {
-      // Toujours tenter la BDD/API d'abord
+      const data = await db.getGameHistory();
+      setGameHistory(Array.isArray(data) ? data.map(dbToGameSession) : []);
+    } catch (error) {
+      console.error('Failed to load game history:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshGameHistory();
+  }, [db]);
+
+  const addGameSession = async (session: Omit<GameSessionDB, 'id'>) => {
+    logger.debug('addGameSession called with: ' + JSON.stringify(session));
+    if (!db) return;
+    try {
+      const newSessionDB = await db.addGameSession(session);
+      const newSession = dbToGameSession(newSessionDB);
+      setGameHistory(prev => [newSession, ...prev]);
+      logger.info('Game session added: ' + (newSession?.id || JSON.stringify(newSession)));
+      return newSession;
+    } catch (error) {
+      logger.error('Failed to add game session: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
+    }
+  };
+
+  const updateGameSession = async (id: string, updates: Partial<GameSessionDB>) => {
+    logger.debug('updateGameSession called with id: ' + id + ', updates: ' + JSON.stringify(updates));
+    if (!db) return;
+    try {
+      const updatedDB = await db.updateGameSession(id, updates);
+      const updatedSession = dbToGameSession(updatedDB);
+      setGameHistory(prev => prev.map(s => s.id === id ? updatedSession : s));
+      logger.info('Game session updated: ' + id);
+      return updatedSession;
+    } catch (error) {
+      logger.error('Failed to update game session: ' + (error instanceof Error ? error.message : String(error)));
+      throw error;
+    }
+  };
+
+  const deleteGameSession = async (id: string) => {
+    if (!db) return;
+    try {
+      await db.deleteGameSession(id);
+      setGameHistory(prev => prev.filter(s => s.id !== id));
+    } catch (error) {
+      console.error('Failed to delete game session:', error);
+      throw error;
+    }
+  };
+
+  return {
+    gameHistory,
+    isLoading,
+    addGameSession,
+    updateGameSession,
+    deleteGameSession,
+    refreshGameHistory
+  };
+    deadCharacters: db.dead_characters
+      ? Object.fromEntries(Object.entries(db.dead_characters).map(([k, v]) => [k, v === 'true']))
+      : undefined,
+    newCharacterNames: db.new_character_names
+      ? Object.fromEntries(Object.entries(db.new_character_names).map(([k, v]) => [k, v]))
+      : undefined,
+    characterHistory: Array.isArray(db.character_history)
+      ? db.character_history.filter((ev): ev is import('@/types').CharacterEvent =>
+          typeof ev === 'object' && 'characterId' in ev && 'eventType' in ev && 'timestamp' in ev)
+      : undefined,
+    image: undefined // Adapter si la BDD contient cette info
+  }
       const data = await db.getPlayers()
       setPlayers(data)
     } catch (error) {
@@ -32,7 +91,7 @@ export function usePlayers() {
       const local = window.localStorage.getItem('players')
       if (local) {
         setPlayers(JSON.parse(local))
-        console.warn('Fallback localStorage activé pour les joueurs.')
+        console.warn('Fallback localStorage activé pour les joueurs.');
       } else {
         setPlayers([])
       }
@@ -45,96 +104,105 @@ export function usePlayers() {
     refreshPlayers()
   }, [db])
 
-  const addPlayer = async (player: Omit<any, 'id'>) => {
+  const addPlayer = async (player: Omit<Player, 'id'>) => {
   logger.debug('addPlayer called with: ' + JSON.stringify(player));
-    if (!db) return
-    try {
-      const newPlayer = await db.addPlayer(player)
-      setPlayers(prev => [...prev, newPlayer])
-      logger.info('Player added: ' + (newPlayer?.name || JSON.stringify(newPlayer)));
-      return newPlayer
-    } catch (error) {
-      logger.error('Failed to add player: ' + (error instanceof Error ? error.message : String(error)));
-      throw error
+    export function usePlayers() {
+      const { db } = useDatabase();
+      const [players, setPlayers] = useState<Player[]>([]);
+      const [isLoading, setIsLoading] = useState(true);
+
+      const refreshPlayers = async () => {
+        if (!db) {
+          const local = window.localStorage.getItem('players');
+          if (local) {
+            setPlayers(JSON.parse(local));
+            console.warn('Fallback localStorage activé pour les joueurs (pas de db).');
+          } else {
+            setPlayers([]);
+          }
+          setIsLoading(false);
+          return;
+        }
+        try {
+          const data = await db.getPlayers();
+          setPlayers(data.map(dbToPlayer));
+        } catch (error) {
+          console.error('Failed to load players from BDD/API:', error);
+          const local = window.localStorage.getItem('players');
+          if (local) {
+            setPlayers(JSON.parse(local));
+            console.warn('Fallback localStorage activé pour les joueurs.');
+          } else {
+            setPlayers([]);
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      useEffect(() => {
+        refreshPlayers();
+      }, [db]);
+
+      const addPlayer = async (player: Omit<Player, 'id'>) => {
+        logger.debug('addPlayer called with: ' + JSON.stringify(player));
+        if (!player.name || typeof player.name !== 'string' || player.name.trim().length === 0) {
+          throw new Error('Le nom du joueur est obligatoire et doit être une chaîne non vide.');
+        }
+        if (!db) return;
+        try {
+          const now = new Date().toISOString();
+          const dbPlayer: Omit<PlayerDB, 'id'> = {
+            name: player.name,
+            created_at: now
+          };
+          const newPlayer = await db.addPlayer(dbPlayer);
+          setPlayers(prev => [...prev, dbToPlayer(newPlayer)]);
+          logger.info('Player added: ' + (newPlayer?.name || JSON.stringify(newPlayer)));
+          return dbToPlayer(newPlayer);
+        } catch (error) {
+          logger.error('Failed to add player: ' + (error instanceof Error ? error.message : String(error)));
+          throw error;
+        }
+      };
+
+      const updatePlayer = async (id: string, updates: Partial<PlayerDB>) => {
+        logger.debug('updatePlayer called with id: ' + id + ', updates: ' + JSON.stringify(updates));
+        if (!db) return;
+        try {
+          const updated = await db.updatePlayer(id, updates);
+          setPlayers(prev => prev.map(p => p.id === id ? dbToPlayer(updated) : p));
+          logger.info('Player updated: ' + id);
+          return dbToPlayer(updated);
+        } catch (error) {
+          logger.error('Failed to update player: ' + (error instanceof Error ? error.message : String(error)));
+          throw error;
+        }
+      };
+
+      const deletePlayer = async (id: string) => {
+        if (!db) return;
+        try {
+          await db.deletePlayer(id);
+          setPlayers(prev => prev.filter(p => p.id !== id));
+          const playersData = await db.getPlayers();
+          setPlayers(playersData.map(dbToPlayer));
+        } catch (error) {
+          console.error('Failed to delete player:', error);
+          throw error;
+        }
+      };
+
+      return {
+        players,
+        isLoading,
+        addPlayer,
+        updatePlayer,
+        deletePlayer,
+        refreshPlayers
+      };
     }
-  }
-
-  const updatePlayer = async (id: string, updates: Partial<any>) => {
-  logger.debug('updatePlayer called with id: ' + id + ', updates: ' + JSON.stringify(updates));
-    if (!db) return
-    try {
-      const updated = await db.updatePlayer(id, updates)
-      setPlayers(prev => prev.map(p => p.id === id ? updated : p))
-      logger.info('Player updated: ' + id);
-      return updated
-    } catch (error) {
-      logger.error('Failed to update player: ' + (error instanceof Error ? error.message : String(error)));
-      throw error
-    }
-  }
-
-  const deletePlayer = async (id: string) => {
-    if (!db) return
-    try {
-      await db.deletePlayer(id)
-      setPlayers(prev => prev.filter(p => p.id !== id))
-    } catch (error) {
-      console.error('Failed to delete player:', error)
-      throw error
-    }
-  }
-
-  return {
-    players,
-    isLoading,
-    addPlayer,
-    updatePlayer,
-    deletePlayer,
-    refreshPlayers
-  }
-}
-
-// Hook for game history
-export function useGameHistory() {
-  const { db } = useDatabase()
-  const [gameHistory, setGameHistory] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-
-  const refreshGameHistory = async () => {
-    if (!db) return
-    try {
-      const data = await db.getGameHistory()
-      setGameHistory(data)
-    } catch (error) {
-      console.error('Failed to load game history:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    refreshGameHistory()
-  }, [db])
-
-  const addGameSession = async (session: Omit<any, 'id'>) => {
-  logger.debug('addGameSession called with: ' + JSON.stringify(session));
-    if (!db) return
-    try {
-      const newSession = await db.addGameSession(session)
-      setGameHistory(prev => [newSession, ...prev])
-      logger.info('Game session added: ' + (newSession?.id || JSON.stringify(newSession)));
-      return newSession
-    } catch (error) {
-      logger.error('Failed to add game session: ' + (error instanceof Error ? error.message : String(error)));
-      throw error
-    }
-  }
-
-  const updateGameSession = async (id: string, updates: Partial<any>) => {
-  logger.debug('updateGameSession called with id: ' + id + ', updates: ' + JSON.stringify(updates));
-    if (!db) return
-    try {
-      const updated = await db.updateGameSession(id, updates)
+      const updated = dbToGameSession(updatedDB)
       setGameHistory(prev => prev.map(s => s.id === id ? updated : s))
       logger.info('Game session updated: ' + id);
       return updated
@@ -238,41 +306,46 @@ export function useGameTemplates() {
 
 // Hook for current game
 export function useCurrentGame() {
-  const { db } = useDatabase()
-  const [currentGame, setCurrentGame] = useState<any | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const { db } = useDatabase();
+  const [currentGame, setCurrentGame] = useState<GameSessionDB | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refreshCurrentGame = async () => {
-    if (!db) return
+    if (!db) return;
     try {
-      const data = await db.getCurrentGame()
-      setCurrentGame(data)
+      const data = await db.getCurrentGame();
+      setCurrentGame(data);
     } catch (error) {
-      console.error('Failed to load current game:', error)
+      console.error('Failed to load current game:', error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    refreshCurrentGame()
-  }, [db])
+    refreshCurrentGame();
+  }, [db]);
 
-  const updateCurrentGame = async (game: any | null) => {
-    if (!db) return
+  /**
+   * Met à jour la partie courante
+   * @param game Données de la partie ou null
+   */
+  const updateCurrentGame = async (game: GameSessionDB | null) => {
+    if (!db) return;
     try {
-      await db.setCurrentGame(game)
-      setCurrentGame(game)
+      await db.setCurrentGame(game);
+      setCurrentGame(game);
     } catch (error) {
-      console.error('Failed to update current game:', error)
-      throw error
+      console.error('Failed to update current game:', error);
+      throw error;
     }
-  }
+  };
 
   return {
     currentGame,
+    setCurrentGame,
     isLoading,
-    setCurrentGame: updateCurrentGame,
+    updateCurrentGame,
     refreshCurrentGame
-  }
+  };
 }

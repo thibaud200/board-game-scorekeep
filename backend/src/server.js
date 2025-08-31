@@ -14,6 +14,10 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const PORT = 3001
 
+
+// Types stricts synchronisés avec la BDD
+import { GameSessionDB, PlayerDB, GameTemplateDB, GameExtensionDB } from './types.js';
+
 // Créer la base de données dans le répertoire du projet
 const dbPath = path.join(__dirname, '..', 'database', 'board-game-tracker.db');
 const db = new Database(dbPath)
@@ -140,14 +144,17 @@ try {
 
 // Routes API
 // Players
+
+// GET /api/players — renvoie PlayerDB[]
 app.get('/api/players', (req, res) => {
   try {
-    const players = db.prepare('SELECT * FROM players ORDER BY name').all()
-    res.json(players)
+  // Type attendu: PlayerDB[]
+  const players = db.prepare('SELECT * FROM players ORDER BY name').all();
+    res.json(players);
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 app.post('/api/players',
   [
@@ -220,30 +227,25 @@ app.delete('/api/players/:id', (req, res) => {
 })
 
 // Game Templates
+
+// GET /api/game-templates — renvoie GameTemplateDB[]
 app.get('/api/game-templates', (req, res) => {
   try {
-    const templates = db.prepare('SELECT * FROM game_templates ORDER BY name').all()
+  // Type attendu: GameTemplateDB[]
+  const templates = db.prepare('SELECT * FROM game_templates ORDER BY name').all();
     res.json(templates.map(template => ({
-      id: template.id,
-      id_bgg: template.id_bgg,
-      name: template.name,
-      min_players: template.min_players,
-      max_players: template.max_players,
-      description: template.description,
-      image: template.image,
-      hasCharacters: Boolean(template.has_characters),
+      ...template,
+      has_characters: Boolean(template.has_characters),
+      supports_cooperative: Boolean(template.supports_cooperative),
+      supports_competitive: Boolean(template.supports_competitive),
+      supports_campaign: Boolean(template.supports_campaign),
+      is_cooperative_by_default: Boolean(template.is_cooperative_by_default),
       characters: template.characters ? JSON.parse(template.characters) : undefined,
-      supportsCooperative: Boolean(template.supports_cooperative),
-      supportsCompetitive: Boolean(template.supports_competitive),
-      supportsCampaign: Boolean(template.supports_campaign),
-      defaultMode: template.default_mode || 'competitive',
-      isCooperativeByDefault: Boolean(template.is_cooperative_by_default),
-      createdAt: template.created_at,
-    })))
+    })));
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 app.post('/api/game-templates',
   [
@@ -413,33 +415,27 @@ app.delete('/api/game-templates/:id', (req, res) => {
 })
 
 // Game Sessions
+
+// GET /api/game-sessions — renvoie GameSessionDB[]
 app.get('/api/game-sessions', (req, res) => {
   try {
-    const sessions = db.prepare('SELECT * FROM game_sessions ORDER BY created_at DESC').all()
+  // Type attendu: GameSessionDB[]
+  const sessions = db.prepare('SELECT * FROM game_sessions ORDER BY created_at DESC').all();
     res.json(sessions.map(session => ({
-      id: session.id,
-      gameTemplateId: session.game_template_id,
-      gameMode: session.game_mode,
+      ...session,
       players: JSON.parse(session.players),
       scores: JSON.parse(session.scores),
       characters: session.characters ? JSON.parse(session.characters) : undefined,
       extensions: session.extensions ? JSON.parse(session.extensions) : undefined,
-      winner: session.winner,
-      winCondition: session.win_condition,
-      date: session.date,
-      startTime: session.start_time,
-      endTime: session.end_time,
-      duration: session.duration,
       completed: Boolean(session.completed),
-      cooperativeResult: session.coop_result,
-      deadCharacters: session.dead_characters ? JSON.parse(session.dead_characters) : undefined,
-      newCharacterNames: session.new_character_names ? JSON.parse(session.new_character_names) : undefined,
-      characterHistory: session.character_history ? JSON.parse(session.character_history) : undefined
-    })))
+      dead_characters: session.dead_characters ? JSON.parse(session.dead_characters) : undefined,
+      new_character_names: session.new_character_names ? JSON.parse(session.new_character_names) : undefined,
+      character_history: session.character_history ? JSON.parse(session.character_history) : undefined,
+    })));
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    res.status(500).json({ error: err.message });
   }
-})
+});
 
 app.post('/api/game-sessions',
   [

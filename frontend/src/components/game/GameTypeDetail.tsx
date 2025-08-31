@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ArrowLeft, Trophy, Users, GameController, Calendar, Clock, Eye, Skull } from '@phosphor-icons/react'
-import { Player, GameSession } from '@/App'
+import { Player, GameSession } from '@/types'
 import { useGameHistory, usePlayers } from '@/lib/database-hooks'
 
 interface GameTypeDetailProps {
@@ -17,7 +17,7 @@ export function GameTypeDetail({ gameType, onBack }: GameTypeDetailProps) {
   const { players } = usePlayers()
 
   const gameTypeSessions = gameHistory.filter(game => 
-    game.completed && game.gameType === gameType
+    game.completed && game.gameMode === gameType
   )
 
   const getPlayer = (playerId: string) => {
@@ -105,7 +105,7 @@ export function GameTypeDetail({ gameType, onBack }: GameTypeDetailProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GameController size={20} />
-            {game.gameType}
+            {game.gameMode}
           </DialogTitle>
         </DialogHeader>
         
@@ -385,7 +385,7 @@ export function GameTypeDetail({ gameType, onBack }: GameTypeDetailProps) {
                   <div className="flex items-center gap-4">
                     <div>
                       <div className="font-medium flex items-center gap-2">
-                        {game.gameType}
+                        {game.gameMode}
                         {game.isCooperative ? (
                           <Badge variant="outline" className="flex items-center gap-1">
                             <Users size={12} />

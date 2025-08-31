@@ -8,12 +8,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { bggService, type BGGSearchResult, type BGGGameData } from '@/services/BGGService'
 
 // Fonction debounce utilitaire
-function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout)
-    timeout = setTimeout(() => func.apply(null, args), wait)
-  }
+function debounce<T extends (arg: string) => unknown>(func: T, wait: number): (arg: string) => void {
+  let timeout: NodeJS.Timeout;
+  return (arg: string) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(arg), wait);
+  };
 }
 
 interface BGGGameSearchProps {

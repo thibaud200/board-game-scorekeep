@@ -89,7 +89,7 @@ describe('Database Hooks - Tests Techniques (Simplifié)', () => {
     it('should handle database with server type', () => {
       // Arrange
       const mockContext = {
-        db: {} as any, // Mock simple pour éviter de devoir implémenter toute l'interface
+        db: {} as Partial<ReturnType<typeof useDatabase>>, // Mock simple pour éviter de devoir implémenter toute l'interface
         isLoading: false,
         error: null,
         saveToFile: jest.fn(),
@@ -163,7 +163,7 @@ describe('Database Hooks - Tests Techniques (Simplifié)', () => {
         addGameTemplate: jest.fn().mockResolvedValue({})
       }
       const mockContext = {
-        db: mockDatabase as any,
+        db: mockDatabase as Partial<ReturnType<typeof useDatabase>>,
         isLoading: false,
         error: null,
         saveToFile: jest.fn(),

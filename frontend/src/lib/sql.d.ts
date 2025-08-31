@@ -1,10 +1,10 @@
 declare module 'sql.js' {
   interface SqlDatabase {
-    run(sql: string, params?: any[]): void;
+    run(sql: string, params?: (string | number | Uint8Array | null | boolean)[]): void;
     prepare(sql: string): {
       step(): boolean;
-      getAsObject(): any;
-      bind(params: any[]): void;
+      getAsObject(): Record<string, string | number | Uint8Array | null | boolean>;
+      bind(params: (string | number | Uint8Array | null | boolean)[]): void;
       free(): void;
     };
     export(): Uint8Array;

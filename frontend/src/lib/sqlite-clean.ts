@@ -1,16 +1,16 @@
 import { Database, generateId, DEFAULT_GAME_TEMPLATES } from './database'
-import { Player, GameSession } from '@/App'
+import type { PlayerDB, GameSessionDB } from '@/types'
 import { GameTemplate } from '@/types'
 import * as sql from "sql.js"
 
 const initSqlJs = sql.default ?? sql
 
 interface SqlDatabase {
-  run(sql: string, params?: any[]): void
+  run(sql: string, params?: (string | number | Uint8Array | null | boolean)[]): void
   prepare(sql: string): {
     step(): boolean
-    getAsObject(): any
-    bind(params: any[]): void
+    getAsObject(): Record<string, string | number | Uint8Array | null | boolean>
+    bind(params: (string | number | Uint8Array | null | boolean)[]): void
     free(): void
   }
   export(): Uint8Array
@@ -140,7 +140,7 @@ export class SQLiteDatabase implements Database {
     
     if ('showSaveFilePicker' in window) {
       try {
-        const fileHandle = await (window as any).showSaveFilePicker({
+  const fileHandle = await (window as unknown as { showSaveFilePicker: Function }).showSaveFilePicker({
           suggestedName: this.dbPath,
           startIn: 'downloads',
           types: [{
@@ -168,7 +168,7 @@ export class SQLiteDatabase implements Database {
     
     if ('showOpenFilePicker' in window) {
       try {
-        const [fileHandle] = await (window as any).showOpenFilePicker({
+  const [fileHandle] = await (window as unknown as { showOpenFilePicker: Function }).showOpenFilePicker({
           types: [{
             description: 'Base de données SQLite',
             accept: { 'application/x-sqlite3': ['.db'] }
@@ -210,79 +210,61 @@ export class SQLiteDatabase implements Database {
   }
 
   // Player operations
-  async getPlayers(): Promise<Player[]> {
-    if (!this.db) throw new Error('Database not initialized')
-
-    const stmt = this.db.prepare('SELECT * FROM players ORDER BY name')
-    const players: Player[] = []
-
+  async getPlayers(): Promise<PlayerDB[]> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('SELECT * FROM players ORDER BY name');
+    const players: PlayerDB[] = [];
     while (stmt.step()) {
-      const row = stmt.getAsObject()
+      const row = stmt.getAsObject();
       players.push({
         id: row.id as string,
         name: row.name as string,
-        avatar: row.avatar as string || undefined
-      })
+        created_at: typeof row.created_at === 'string' ? row.created_at : ''
+      });
     }
-
-    stmt.free()
-    return players
+    stmt.free();
+    return players;
   }
 
-  async addPlayer(player: Omit<Player, 'id'>): Promise<Player> {
-    if (!this.db) throw new Error('Database not initialized')
-
-    const id = generateId()
-    const newPlayer: Player = { id, ...player }
-
+  async addPlayer(player: Omit<PlayerDB, 'id'>): Promise<PlayerDB> {
+    if (!this.db) throw new Error('Database not initialized');
+    const id = generateId();
+    const created_at = new Date().toISOString();
     this.db.run(
-      'INSERT INTO players (id, name, avatar) VALUES (?, ?, ?)',
-      [id, player.name, player.avatar || null]
-    )
-
-    this.saveToStorage()
-    return newPlayer
+      'INSERT INTO players (id, name, created_at) VALUES (?, ?, ?)',
+      [id, player.name, created_at]
+    );
+    this.saveToStorage();
+    return { id, name: player.name, created_at };
   }
 
-  async updatePlayer(id: string, updates: Partial<Player>): Promise<Player> {
-    if (!this.db) throw new Error('Database not initialized')
-
-    const sets: string[] = []
-    const values: any[] = []
-
+  async updatePlayer(id: string, updates: Partial<PlayerDB>): Promise<PlayerDB> {
+    if (!this.db) throw new Error('Database not initialized');
+    const sets: string[] = [];
+    const values: (string | number | null)[] = [];
     if (updates.name !== undefined) {
-      sets.push('name = ?')
-      values.push(updates.name)
+      sets.push('name = ?');
+      values.push(updates.name);
     }
-    if (updates.avatar !== undefined) {
-      sets.push('avatar = ?')
-      values.push(updates.avatar)
-    }
-
     if (sets.length === 0) {
-      throw new Error('No updates provided')
+      throw new Error('No updates provided');
     }
-
-    values.push(id)
-    this.db.run(`UPDATE players SET ${sets.join(', ')} WHERE id = ?`, values)
-
-    this.saveToStorage()
-
-    const stmt = this.db.prepare('SELECT * FROM players WHERE id = ?')
-    stmt.bind([id])
-    
+    values.push(id);
+    this.db.run(`UPDATE players SET ${sets.join(', ')} WHERE id = ?`, values);
+    this.saveToStorage();
+    const stmt = this.db.prepare('SELECT * FROM players WHERE id = ?');
+    stmt.bind([id]);
     if (stmt.step()) {
-      const row = stmt.getAsObject()
-      stmt.free()
+      const row = stmt.getAsObject();
+      stmt.free();
       return {
         id: row.id as string,
         name: row.name as string,
-        avatar: row.avatar as string || undefined
-      }
+        created_at: typeof row.created_at === 'string' ? row.created_at : ''
+      };
     }
-
-    stmt.free()
-    throw new Error('Player not found')
+    stmt.free();
+    throw new Error('Player not found');
   }
 
   async deletePlayer(id: string): Promise<void> {
@@ -293,30 +275,31 @@ export class SQLiteDatabase implements Database {
   }
 
   // Game History operations
-  async getGameHistory(): Promise<GameSession[]> {
+  async getGameHistory(): Promise<GameSessionDB[]> {
     if (!this.db) throw new Error('Database not initialized')
 
     const stmt = this.db.prepare('SELECT * FROM game_sessions ORDER BY created_at DESC')
-    const sessions: GameSession[] = []
+  const sessions: GameSessionDB[] = [];
 
     while (stmt.step()) {
       const row = stmt.getAsObject()
       sessions.push({
-        id: row.id as string,
-  gameTemplate: row.game_type as string, // Map game_type to gameTemplate pour compatibilité
-        gameMode: row.game_mode as 'cooperative' | 'competitive' | 'campaign' || 'competitive',
-        isCooperative: Boolean(row.is_cooperative),
+  id: row.id as string,
+  game_type: row.game_type as string,
+  game_mode: row.game_mode as 'cooperative' | 'competitive' | 'campaign' || 'competitive',
+  is_cooperative: Boolean(row.is_cooperative),
         players: JSON.parse(row.players as string),
         scores: JSON.parse(row.scores as string),
         characters: row.characters ? JSON.parse(row.characters as string) : undefined,
         extensions: row.extensions ? JSON.parse(row.extensions as string) : undefined,
         winner: (row.winner as string) || undefined,
-        winCondition: row.win_condition as 'highest' | 'lowest' | 'cooperative',
+  win_condition: row.win_condition as 'highest' | 'lowest' | 'cooperative',
         date: row.date as string,
-        startTime: (row.start_time as string) || '',
-        endTime: (row.end_time as string) || undefined,
-        duration: (row.duration as number) || undefined,
-        completed: Boolean(row.completed)
+  start_time: (row.start_time as string) || '',
+  end_time: (row.end_time as string) || undefined,
+  duration: typeof row.duration === 'string' ? row.duration : String(row.duration ?? ''),
+  completed: Boolean(row.completed),
+  created_at: typeof row.created_at === 'string' ? row.created_at : ''
       })
     }
 
@@ -324,11 +307,11 @@ export class SQLiteDatabase implements Database {
     return sessions
   }
 
-  async addGameSession(session: Omit<GameSession, 'id'>): Promise<GameSession> {
+  async addGameSession(session: Omit<GameSessionDB, 'id'>): Promise<GameSessionDB> {
     if (!this.db) throw new Error('Database not initialized')
 
     const id = generateId()
-    const newSession: GameSession = { id, ...session }
+  const newSession: GameSessionDB = { id, ...session };
 
     this.db.run(`
       INSERT INTO game_sessions (
@@ -336,39 +319,39 @@ export class SQLiteDatabase implements Database {
         winner, win_condition, date, start_time, end_time, duration, completed
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      id,
-  session.gameTemplate,
-      session.isCooperative ? 1 : 0,
-      JSON.stringify(session.players),
-      JSON.stringify(session.scores),
-      session.characters ? JSON.stringify(session.characters) : null,
-      session.extensions ? JSON.stringify(session.extensions) : null,
-      session.winner || null,
-      session.winCondition,
-      session.date,
-      session.startTime || null,
-      session.endTime || null,
-      session.duration || null,
-      session.completed ? 1 : 0
+  id,
+  session.game_type,
+  session.is_cooperative ? 1 : 0,
+  JSON.stringify(session.players),
+  JSON.stringify(session.scores),
+  session.characters ? JSON.stringify(session.characters) : null,
+  session.extensions ? JSON.stringify(session.extensions) : null,
+  session.winner || null,
+  session.win_condition ?? '',
+  session.date ?? '',
+  session.start_time || null,
+  session.end_time || null,
+  session.duration || null,
+  session.completed ? 1 : 0
     ])
 
     this.saveToStorage()
     return newSession
   }
 
-  async updateGameSession(id: string, updates: Partial<GameSession>): Promise<GameSession> {
+  async updateGameSession(id: string, updates: Partial<GameSessionDB>): Promise<GameSessionDB> {
     if (!this.db) throw new Error('Database not initialized')
 
-    const sets: string[] = []
-    const values: any[] = []
+  const sets: string[] = []
+  const values: (string | number | boolean | null)[] = []
 
-    if (updates.gameTemplate !== undefined) {
-      sets.push('game_type = ?')
-      values.push(updates.gameTemplate)
+    if (updates.game_type !== undefined) {
+      sets.push('game_type = ?');
+      values.push(updates.game_type);
     }
-    if (updates.isCooperative !== undefined) {
-      sets.push('is_cooperative = ?')
-      values.push(updates.isCooperative ? 1 : 0)
+    if (updates.is_cooperative !== undefined) {
+      sets.push('is_cooperative = ?');
+      values.push(updates.is_cooperative ? 1 : 0);
     }
     if (updates.players !== undefined) {
       sets.push('players = ?')
@@ -390,17 +373,17 @@ export class SQLiteDatabase implements Database {
       sets.push('winner = ?')
       values.push(updates.winner)
     }
-    if (updates.winCondition !== undefined) {
-      sets.push('win_condition = ?')
-      values.push(updates.winCondition)
+    if (updates.win_condition !== undefined) {
+      sets.push('win_condition = ?');
+      values.push(updates.win_condition);
     }
-    if (updates.startTime !== undefined) {
-      sets.push('start_time = ?')
-      values.push(updates.startTime)
+    if (updates.start_time !== undefined) {
+      sets.push('start_time = ?');
+      values.push(updates.start_time);
     }
-    if (updates.endTime !== undefined) {
-      sets.push('end_time = ?')
-      values.push(updates.endTime)
+    if (updates.end_time !== undefined) {
+      sets.push('end_time = ?');
+      values.push(updates.end_time);
     }
     if (updates.duration !== undefined) {
       sets.push('duration = ?')
@@ -481,8 +464,8 @@ export class SQLiteDatabase implements Database {
   async updateGameTemplate(name: string, updates: Partial<GameTemplate>): Promise<GameTemplate> {
     if (!this.db) throw new Error('Database not initialized')
 
-    const sets: string[] = []
-    const values: any[] = []
+  const sets: string[] = []
+  const values: (string | number | boolean | null)[] = []
 
     if (updates.hasCharacters !== undefined) {
       sets.push('has_characters = ?')
@@ -531,7 +514,7 @@ export class SQLiteDatabase implements Database {
   }
 
   // Current Game operations
-  async getCurrentGame(): Promise<GameSession | null> {
+  async getCurrentGame(): Promise<GameSessionDB | null> {
     if (!this.db) throw new Error('Database not initialized')
 
     const stmt = this.db.prepare('SELECT game_data FROM current_game WHERE id = 1')
@@ -547,7 +530,7 @@ export class SQLiteDatabase implements Database {
     return null
   }
 
-  async setCurrentGame(game: GameSession | null): Promise<void> {
+  async setCurrentGame(game: GameSessionDB | null): Promise<void> {
     if (!this.db) throw new Error('Database not initialized')
 
     this.db.run(

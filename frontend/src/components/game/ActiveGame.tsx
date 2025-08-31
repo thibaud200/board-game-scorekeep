@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
 import { Trophy, Plus, Minus, CheckCircle, Clock, Play, Pause, User } from '@phosphor-icons/react'
-import { Player, GameSession, CharacterEvent } from '@/App'
+import { Player, GameSession, CharacterEvent } from '@/types'
 import { toast } from 'sonner'
 
 interface ActiveGameProps {
@@ -459,7 +459,7 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                   <CardContent className="space-y-4">
                     {/* Dead Characters List - only show if there are dead characters for this player */}
                     {game.characters && game.characters[player.id] && (() => {
-                      const playerEvents = characterHistory.filter(e => e.playerId === player.id)
+                      const playerEvents = characterHistory.filter(e => e.characterId === player.id)
                       const deadEvents = playerEvents.filter(e => e.eventType === 'death')
                       
                       if (deadEvents.length === 0) return null
@@ -469,9 +469,9 @@ export function ActiveGame({ game, players, onGameComplete }: ActiveGameProps) {
                           <div className="text-xs font-medium text-muted-foreground">Previous Characters:</div>
                           <div className="space-y-1">
                             {deadEvents.map((event, index) => (
-                              <div key={`${event.playerId}-${event.timestamp}-${index}`} className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                              <div key={`${event.characterId}-${event.timestamp}-${index}`} className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
                                 <span>💀</span>
-                                <span>{event.characterName}{event.characterType ? ` (${event.characterType})` : ''}</span>
+                                <span>{event.characterId}{event.characterId ? ` (${event.characterId})` : ''}</span>
                               </div>
                             ))}
                           </div>

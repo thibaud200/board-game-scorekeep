@@ -4,8 +4,11 @@ import { Database } from './database';
 export async function getExtensionsForGame(db: Database, baseGameName: string): Promise<string[]> {
   // Query the new game_extensions table for extensions linked to baseGameName
   if (!db) throw new Error('Database not initialized');
-  // This assumes you have a method to run raw SQL or a similar API
-  const stmt = (db as any).db.prepare('SELECT name FROM game_extensions WHERE base_game_name = ? ORDER BY name');
+  // Typage strict : on suppose que db expose une propriété 'db' de type SQLiteDB
+  // Typage strict : on utilise l'interface SqlDatabase du module sqlite.ts
+  // @ts-expect-error: propriété interne pour accès bas niveau
+  const sqliteDb = (db as unknown as { db: import('./sqlite').SqlDatabase }).db;
+  const stmt = sqliteDb.prepare('SELECT name FROM game_extensions WHERE base_game_name = ? ORDER BY name');
   const extensions: string[] = [];
   stmt.bind([baseGameName]);
   while (stmt.step()) {

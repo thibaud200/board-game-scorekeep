@@ -28,6 +28,7 @@
     "install:all": "npm install --workspace=frontend && npm install --workspace=backend"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "concurrently": "^8.2.2"
   },
   "engines": {
