@@ -81,26 +81,27 @@ CREATE TABLE game_sessions (
 | `new_character_names` | TEXT | JSON object des nouveaux noms |
 | `character_history` | TEXT | JSON array de l'historique des événements |
 
+
 ### 3. 🎲 `game_templates` - Templates de Jeux
 
 ```sql
 CREATE TABLE game_templates (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT UNIQUE NOT NULL,
-    has_characters BOOLEAN NOT NULL,
-    characters TEXT,
-    is_cooperative_by_default BOOLEAN NOT NULL,
-    base_game_name TEXT,
-    min_players INTEGER,
-    max_players INTEGER,
-    description TEXT,
-    image TEXT,
-    id_bgg TEXT,
-    supports_cooperative BOOLEAN,
-    supports_competitive BOOLEAN,
-    supports_campaign BOOLEAN,
-    default_mode TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        has_characters BOOLEAN NOT NULL,
+        characters TEXT,
+        is_cooperative_by_default BOOLEAN NOT NULL,
+        base_game_name TEXT,
+        min_players INTEGER,
+        max_players INTEGER,
+        description TEXT,
+        image TEXT,
+        id_bgg TEXT,
+        supports_cooperative BOOLEAN,
+        supports_competitive BOOLEAN,
+        supports_campaign BOOLEAN,
+        default_mode TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -111,7 +112,7 @@ CREATE TABLE game_templates (
 | `id` | INTEGER | Clé primaire auto-incrémentée |
 | `name` | TEXT | Nom du jeu (unique, non null) |
 | `has_characters` | BOOLEAN | 1 si le jeu a des personnages |
-| `characters` | TEXT | Liste des personnages (JSON) |
+| `characters` | TEXT | Liste des personnages (JSON, voir exemple ci-dessous) |
 | `is_cooperative_by_default` | BOOLEAN | 1 si le jeu est coopératif par défaut |
 | `base_game_name` | TEXT | Nom du jeu de base (si extension) |
 | `min_players` | INTEGER | Nombre minimum de joueurs |
@@ -124,6 +125,29 @@ CREATE TABLE game_templates (
 | `supports_campaign` | BOOLEAN | 1 si supporte le mode campagne |
 | `default_mode` | TEXT | Mode par défaut du jeu |
 | `created_at` | DATETIME | Date de création du template |
+
+**Exemple JSON pour `characters`** :
+```json
+[
+    {
+        "id": "brute",
+        "name": "Brute",
+        "classType": "Tank",
+        "description": "Personnage robuste, encaisse les dégâts.",
+        "abilities": ["Shield", "Taunt"],
+        "imageUrl": "/images/brute.png",
+        "source": "manual",
+        "externalId": null,
+        "createdAt": "2025-08-31T12:00:00Z"
+    }
+]
+```
+
+---
+
+#### 🔗 Synchronisation des types
+
+La structure du champ `characters` doit être identique entre la BDD (JSON), le backend (TypeScript/Express) et le frontend (TypeScript/React). Utiliser l'interface `GameCharacter` côté TypeScript pour garantir la cohérence des données et faciliter la validation, la documentation et les migrations.
 
 ### 4. ⚡ `current_game` - Partie en Cours
 

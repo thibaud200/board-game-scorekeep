@@ -16,6 +16,48 @@ board-game-scorekeep/
 - **Backend** : Voir [`backend/README.md`](backend/README.md)
 - **Frontend** : Voir [`frontend/README.md`](frontend/README.md)
 
+#### 🛠️ Outils de développement et qualité
+Outils complémentaires recommandés pour le frontend :
+```json
+{
+  "husky": "^9.0.0",           // Git hooks
+  "lint-staged": "^15.0.0",    // Linting sur staged files
+  "commitizen": "^4.3.0",      // Commits conventionnels
+  "semantic-release": "^24.0.0" // Release automatisée
+}
+
+## 🧩 Types de données partagés
+
+Les interfaces TypeScript partagées garantissent la cohérence des données entre le frontend, le backend et la base de données.
+
+Exemple d'utilisation du type `GameCharacter` :
+```typescript
+export interface GameCharacter {
+  id: string;
+  name: string;
+  classType?: string;
+  description?: string;
+  abilities?: string[];
+  imageUrl?: string;
+  source?: 'manual' | 'api_boardgamegeek' | string;
+  externalId?: string;
+  createdAt?: string;
+}
+
+const characters: GameCharacter[] = [
+  {
+    id: "brute",
+    name: "Brute",
+    classType: "Tank",
+    description: "Personnage robuste, encaisse les dégâts.",
+    abilities: ["Shield", "Taunt"],
+    imageUrl: "/images/brute.png",
+    source: "manual",
+    createdAt: "2025-08-31T12:00:00Z"
+  }
+];
+```
+
 ## 🚀 Installation globale
 
 ### Prérequis

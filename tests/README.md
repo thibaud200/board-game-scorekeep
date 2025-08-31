@@ -28,6 +28,26 @@ tests/
 │   └── lucide-icon.js            # Mock icônes
 └── setup.ts                      # Configuration Jest globale
 ```
+### Exemple de test sur GameCharacter
+
+```typescript
+import { GameCharacter } from '../frontend/src/types';
+
+describe('GameCharacter', () => {
+  it('should create a valid character object', () => {
+    const character: GameCharacter = {
+      id: 'brute',
+      name: 'Brute',
+      classType: 'Tank',
+      abilities: ['Shield', 'Taunt'],
+      source: 'manual',
+      createdAt: '2025-08-31T12:00:00Z'
+    };
+    expect(character.name).toBe('Brute');
+    expect(character.abilities).toContain('Shield');
+  });
+});
+```
 
 ## 🎯 Stratégie de Tests
 
