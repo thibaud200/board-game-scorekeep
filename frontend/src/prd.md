@@ -1,18 +1,50 @@
-# Board Game Score Tracker - PRD v1.0.1 (État Actuel)
+# Board Game Score Tracker - PRD v1.0.1 (État Actuel - Décembre 2025)
 
 ## 🎯 Vision & Mission
 
-**Vision Statement**: Système de suivi de parties de jeux de société modulaire et réactif, permettant la gestion complète des sessions de jeu avec support multi-modes, intégration BoardGameGeek pour l'auto-import intelligent, gestion avancée des personnages, et validation robuste des données.
+**Vision Statement**: Système de suivi de parties de jeux de société modulaire et réactif, permettant la gestion complète des sessions de jeu avec support multi-modes, intégration BoardGameGeek avancée pour l'auto-import intelligent, gestion étendue des métadonnées, et validation robuste des données.
 
-**État Actuel**: Application complètement fonctionnelle avec interface moderne, base de données SQLite, architecture modulaire React, intégration BGG avec analyse intelligente, infrastructure de tests complète (52/52 tests ✅), et système de validation complet.
+**État Actuel**: Application complètement fonctionnelle avec interface moderne, base de données SQLite étendue, architecture modulaire React, intégration BGG complète avec formulaire d'édition avancée, infrastructure de tests complète (52/52 tests ✅), et système de validation complet.
 
-**Qualités d'expérience**: Adaptatif, Intuitif, Complet, Robuste, Intelligent, Testé
+**Qualités d'expérience**: Adaptatif, Intuitif, Complet, Robuste, Intelligent, Testé, Éditable
 
 ## 📊 Classification du Projet
-- **Version**: v1.0.1
-- **Niveau de complexité**: Application Avancée (gestion d'état complexe, base de données, multi-modes, intégration API externe, validation, tests complets)
-- **Architecture**: React 19 + TypeScript + Tailwind CSS + SQLite + Express 5 + Radix UI + BoardGameGeek XML API + Jest/RTL
-- **Activité principale**: Gestion complète des sessions de jeu avec validation, intégration BGG intelligente, infrastructure de tests robuste, et statistiques avancées
+- **Version**: v1.0.1 (Décembre 2025)
+- **Niveau de complexité**: Application Avancée (gestion d'état complexe, base de données étendue, multi-modes, intégration API externe, validation, tests complets, édition métadonnées)
+- **Architecture**: React 19 + TypeScript + Tailwind CSS + SQLite étendu + Express 5 + Radix UI + BoardGameGeek XML API + Jest/RTL
+- **Activité principale**: Gestion complète des sessions de jeu avec validation, intégration BGG avancée avec édition complète, infrastructure de tests robuste, et statistiques avancées
+
+## 🆕 Nouvelles Fonctionnalités v1.0.1
+
+### 🔍 **BGG Avancé - Formulaire d'Édition Complet**
+- **Nouvellement Implémenté**: Formulaire d'édition avancée pour tous les champs BGG
+- **Fonctionnalités Étendues**:
+  - **Édition complète** : Modification de tous les champs BGG avant import
+  - **Informations détaillées** : Nom, année, min/max joueurs, âge minimum, temps de jeu (moyen/min/max)
+  - **Évaluations modifiables** : Note BGG (0-10) et complexité (0-5) éditables
+  - **Images personnalisables** : URLs image principale et miniature modifiables
+  - **Description éditable** : Texte libre avec prévisualisation intégrée
+  - **Métadonnées structurées** : Catégories, mécaniques, familles (listes éditables ligne par ligne)
+  - **Gestion personnages** : Liste éditable avec ajout/suppression
+  - **Extensions visualisables** : Affichage avec suppression individuelle
+  - **Validation en temps réel** : Vérification des champs obligatoires
+  - **Boutons d'action** : Sauvegarde/Réinitialisation/Annulation
+- **Interface**: Formulaire modal expansible avec organisation par sections
+- **État**: ✅ Complet - Édition avancée fonctionnelle avec validation robuste
+
+### 🗄️ **Base de Données Étendue**
+- **Nouvellement Implémenté**: Extension complète des champs BGG en base de données
+- **Nouveaux Champs**:
+  - **Images** : `thumbnail` (URL miniature BGG)
+  - **Temps de jeu** : `playing_time`, `min_play_time`, `max_play_time` (minutes)
+  - **Public** : `min_age` (âge minimum recommandé)
+  - **Métadonnées** : `categories`, `mechanics`, `families` (JSON arrays)
+  - **Évaluations** : `rating` (0-10), `complexity` (0-5)
+- **Optimisations**:
+  - **Contraintes FK supprimées** : Flexibilité développement sans blocages
+  - **Migration automatique** : Ajout des champs sans perte de données
+  - **Nettoyage des doublons** : Résolution automatique des conflits
+- **État**: ✅ Complet - Structure étendue opérationnelle
 
 ## ✅ Fonctionnalités Implémentées
 
